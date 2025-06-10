@@ -8,8 +8,8 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Wedding Services Platform",
-  description: "Book wedding services and earn rewards",
+  title: "Blissmet: Your Event Our Dream",
+  description: "Transform your events into unforgettable experiences with Blissmet - India's premier event planning platform",
 }
 
 export default function RootLayout({

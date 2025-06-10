@@ -8,7 +8,7 @@ import {
   PaymentElement,
   useStripe,
   useElements,
-} from "@stripe/stripe-js/pure"
+} from "@stripe/stripe-js"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
