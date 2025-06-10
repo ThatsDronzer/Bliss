@@ -1,57 +1,36 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { loadStripe } from "@stripe/stripe-js"
+import { CreditCard } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-
-// Replace with your Stripe publishable key
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
 export default function CheckoutPage() {
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
 
-  const handleCheckout = async () => {
+  const handleMockPayment = async () => {
     try {
       setLoading(true)
-      const stripe = await stripePromise
-      if (!stripe) throw new Error("Stripe failed to load")
-
-      // In a real app, you would fetch the session from your backend
-      const response = await fetch("/api/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          items: [
-            {
-              name: "Event Services",
-              amount: 11800, // ₹11,800 in paise
-              quantity: 1,
-            },
-          ],
-        }),
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Generate a mock order ID
+      const mockOrderId = `ORDER${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+      
+      // Simulate successful payment
+      router.push(`/cart/success?session_id=${mockOrderId}`)
+      
+      toast({
+        title: "Payment Successful",
+        description: "Your payment has been processed successfully.",
       })
-
-      const session = await response.json()
-
-      const result = await stripe.redirectToCheckout({
-        sessionId: session.id,
-      })
-
-      if (result.error) {
-        toast({
-          title: "Payment Failed",
-          description: result.error.message,
-          variant: "destructive",
-        })
-      }
     } catch (error) {
       console.error("Payment error:", error)
       toast({
@@ -96,17 +75,63 @@ export default function CheckoutPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Payment</CardTitle>
-                <CardDescription>Secure payment via Stripe</CardDescription>
+                <CardTitle>Payment Details</CardTitle>
+                <CardDescription>Enter your card information</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button
-                  onClick={handleCheckout}
-                  className="w-full"
-                  disabled={loading}
-                >
-                  {loading ? "Processing..." : "Proceed to Payment"}
-                </Button>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cardNumber">Card Number</Label>
+                    <Input 
+                      id="cardNumber" 
+                      placeholder="4242 4242 4242 4242"
+                      disabled={loading}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="expiry">Expiry Date</Label>
+                      <Input 
+                        id="expiry" 
+                        placeholder="MM/YY"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cvv">CVV</Label>
+                      <Input 
+                        id="cvv" 
+                        placeholder="123"
+                        type="password"
+                        maxLength={3}
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleMockPayment}
+                    className="w-full"
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4 animate-pulse" />
+                        Processing...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Pay ₹11,800
+                      </span>
+                    )}
+                  </Button>
+
+                  <p className="text-sm text-gray-500 text-center">
+                    This is a demo checkout. No actual payment will be processed.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </div>
