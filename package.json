@@ -57,6 +57,7 @@
     "react-resizable-panels": "latest",
     "recharts": "latest",
     "sonner": "latest",
+    "stripe": "^14.21.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "use-sync-external-store": "latest",

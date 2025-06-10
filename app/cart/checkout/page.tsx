@@ -3,88 +3,66 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { loadStripe } from "@stripe/stripe-js"
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from "@stripe/stripe-js"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 
 // Replace with your Stripe publishable key
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!)
 
-function CheckoutForm() {
-  const stripe = useStripe()
-  const elements = useElements()
-  const [error, setError] = useState<string | null>(null)
-  const [processing, setProcessing] = useState(false)
+export default function CheckoutPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleCheckout = async () => {
+    try {
+      setLoading(true)
+      const stripe = await stripePromise
+      if (!stripe) throw new Error("Stripe failed to load")
 
-    if (!stripe || !elements) {
-      return
-    }
+      // In a real app, you would fetch the session from your backend
+      const response = await fetch("/api/create-checkout-session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          items: [
+            {
+              name: "Event Services",
+              amount: 11800, // ₹11,800 in paise
+              quantity: 1,
+            },
+          ],
+        }),
+      })
 
-    setProcessing(true)
+      const session = await response.json()
 
-    const { error: submitError } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/cart/confirmation`,
-      },
-    })
+      const result = await stripe.redirectToCheckout({
+        sessionId: session.id,
+      })
 
-    if (submitError) {
-      setError(submitError.message ?? "An error occurred")
-      setProcessing(false)
+      if (result.error) {
+        toast({
+          title: "Payment Failed",
+          description: result.error.message,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Payment error:", error)
       toast({
-        title: "Payment Failed",
-        description: submitError.message,
+        title: "Error",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       })
+    } finally {
+      setLoading(false)
     }
   }
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-6">
-        <div>
-          <Label>Card Details</Label>
-          <PaymentElement />
-        </div>
-
-        {error && <div className="text-red-500 text-sm">{error}</div>}
-
-        <Button type="submit" className="w-full" disabled={!stripe || processing}>
-          {processing ? "Processing..." : "Pay Now"}
-        </Button>
-      </div>
-    </form>
-  )
-}
-
-export default function CheckoutPage() {
-  const [clientSecret, setClientSecret] = useState<string>("")
-
-  // In a real app, you would fetch the client secret from your backend
-  useEffect(() => {
-    fetch("/api/create-payment-intent", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ amount: 1000 }), // amount in cents
-    })
-      .then((res) => res.json())
-      .then((data) => setClientSecret(data.clientSecret))
-  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -118,23 +96,17 @@ export default function CheckoutPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Payment Details</CardTitle>
-                <CardDescription>Enter your payment information securely</CardDescription>
+                <CardTitle>Payment</CardTitle>
+                <CardDescription>Secure payment via Stripe</CardDescription>
               </CardHeader>
               <CardContent>
-                {clientSecret && (
-                  <Elements
-                    stripe={stripePromise}
-                    options={{
-                      clientSecret,
-                      appearance: {
-                        theme: "stripe",
-                      },
-                    }}
-                  >
-                    <CheckoutForm />
-                  </Elements>
-                )}
+                <Button
+                  onClick={handleCheckout}
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? "Processing..." : "Proceed to Payment"}
+                </Button>
               </CardContent>
             </Card>
           </div>
