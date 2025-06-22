@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Mail, Lock, AlertCircle, User, Store, ShieldCheck, CheckCircle } from "lucide-react"
+import { Mail, Lock, AlertCircle, User, Store, Phone, CheckCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,20 +14,22 @@ import { useAuth } from "@/lib/auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { login } = useAuth()
-  const [email, setEmail] = useState("priya.sharma@example.com")
-  const [password, setPassword] = useState("password123")
+  const [identifier, setIdentifier] = useState("")
+  const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [successMessage, setSuccessMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [loginType, setLoginType] = useState<"user" | "vendor" | "admin">("user")
+  const [loginType, setLoginType] = useState<"user" | "vendor">("user")
+  const [identifierType, setIdentifierType] = useState<"email" | "phone">("email")
 
   useEffect(() => {
-    const message = searchParams.get("message")
+    const message = searchParams?.get("message")
     if (message) {
       setSuccessMessage(message)
     }
@@ -39,15 +41,11 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const result = await login(email, password, loginType)
+      const result = await login(identifier, password, loginType)
       if (result.success) {
-        // Redirect logic: Only vendors and admins go to dashboard, users stay on homepage
-        if (loginType === "admin") {
-          router.push("/admin-dashboard")
-        } else if (loginType === "vendor") {
+        if (loginType === "vendor") {
           router.push("/vendor-dashboard")
         } else {
-          // Users stay on current page or go to homepage
           router.push("/")
         }
       } else {
@@ -60,16 +58,19 @@ export default function LoginPage() {
     }
   }
 
-  const setDemoCredentials = (type: "user" | "vendor" | "admin") => {
-    if (type === "admin") {
-      setEmail("admin@blissmet.in")
-    } else if (type === "vendor") {
-      setEmail("info@royalweddingpalace.in")
+  const setDemoCredentials = (type: "user" | "vendor") => {
+    if (type === "vendor") {
+      setIdentifier("info@royalweddingpalace.in")
     } else {
-      setEmail("priya.sharma@example.com")
+      setIdentifier("priya.sharma@example.com")
     }
     setPassword("password123")
     setLoginType(type)
+  }
+
+  const getDashboardLink = () => {
+    if (loginType === "vendor") return "/vendor-dashboard"
+    return "/"
   }
 
   return (
@@ -103,8 +104,8 @@ export default function LoginPage() {
               </Alert>
             )}
 
-            <Tabs value={loginType} onValueChange={(value) => setLoginType(value as "user" | "vendor" | "admin")}>
-              <TabsList className="grid w-full grid-cols-3 mb-6">
+            <Tabs value={loginType} onValueChange={(value) => setLoginType(value as "user" | "vendor")}>
+              <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger
                   value="user"
                   className="flex items-center gap-2"
@@ -121,14 +122,6 @@ export default function LoginPage() {
                   <Store className="h-4 w-4" />
                   <span>Vendor</span>
                 </TabsTrigger>
-                <TabsTrigger
-                  value="admin"
-                  className="flex items-center gap-2"
-                  onClick={() => setDemoCredentials("admin")}
-                >
-                  <ShieldCheck className="h-4 w-4" />
-                  <span>Admin</span>
-                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="user">
@@ -143,80 +136,101 @@ export default function LoginPage() {
                 </p>
               </TabsContent>
 
-              <TabsContent value="admin">
-                <p className="text-sm text-gray-500 mb-4">
-                  Login as an admin to manage the platform, users, vendors, and more.
+              {error && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <Label>Login Using</Label>
+                  <Select value={identifierType} onValueChange={(value) => setIdentifierType(value as "email" | "phone")}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select login method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="phone">Phone Number</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="identifier">{identifierType === "email" ? "Email Address" : "Phone Number"}</Label>
+                  <div className="relative">
+                    {identifierType === "email" ? (
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    ) : (
+                      <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    )}
+                    <Input
+                      id="identifier"
+                      type={identifierType === "email" ? "email" : "tel"}
+                      className="pl-10"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      placeholder={identifierType === "email" ? "your@email.com" : "+91 98765 43210"}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="password"
+                      type="password"
+                      className="pl-10"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="text-sm text-right">
+                    <a href="#" className="text-pink-600 hover:underline">
+                      Forgot password?
+                    </a>
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-pink-600 hover:bg-pink-700 text-white py-3 text-lg font-semibold"
+                >
+                  {isLoading ? "Signing in..." : "Sign In"}
+                </Button>
+
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200"></div>
+                  </div>
+                  <div className="relative flex justify-center text-sm">
+                    <span className="px-2 bg-white text-gray-500">or</span>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setDemoCredentials(loginType)}
+                >
+                  Use Demo Credentials
+                </Button>
+
+                <p className="text-center text-sm text-gray-500 mt-6">
+                  Don't have an account?{" "}
+                  <Link href="/signup" className="text-pink-600 hover:underline font-medium">
+                    Sign up
+                  </Link>
                 </p>
-              </TabsContent>
+              </form>
             </Tabs>
-
-            {error && (
-              <Alert variant="destructive" className="mb-6">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder={
-                      loginType === "admin"
-                        ? "admin@example.com"
-                        : loginType === "vendor"
-                          ? "business@example.com"
-                          : "you@example.com"
-                    }
-                    className="pl-10"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    type="password"
-                    className="pl-10"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="text-sm text-right">
-                  <a href="#" className="text-pink-600 hover:underline">
-                    Forgot password?
-                  </a>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-pink-600 hover:bg-pink-700 text-white py-3 text-lg font-semibold"
-              >
-                {isLoading ? "Signing in..." : "Sign In"}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <p className="text-gray-600">
-                Don't have an account?{" "}
-                <Link href="/signup" className="text-pink-600 hover:underline font-semibold">
-                  Sign up here
-                </Link>
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

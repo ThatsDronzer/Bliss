@@ -33,12 +33,15 @@ export default function ProfilePage() {
   }
 
   const [formData, setFormData] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    phone: user?.phone || "",
-    location: user?.location || "",
-    weddingDate: user?.weddingDate || "",
-    partner: user?.partner || "",
+    name: user?.name || "John Doe",
+    email: user?.email || "john.doe@example.com",
+    phone: user?.phone || "9876543210",
+    houseNo: user?.houseNo || "123A",
+    areaName: user?.areaName || "Green Park",
+    landmark: user?.landmark || "Near City Mall",
+    postOffice: user?.postOffice || "Central PO",
+    state: user?.state || "Delhi",
+    pin: user?.pin || "110016",
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -108,15 +111,11 @@ export default function ProfilePage() {
             <p className="text-sm text-gray-500">{user.email}</p>
             <div className="w-full mt-6 space-y-2">
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Calendar className="h-4 w-4" />
-                <span>Wedding Date: {user.weddingDate || "Not set"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-gray-500">
                 <MapPin className="h-4 w-4" />
-                <span>Location: {user.location || "No location added"}</span>
+                <span>Location: {formData.areaName || "No location added"}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <CoinDisplay amount={userCoins} />
+                <CoinDisplay balance={userCoins} />
                 <span>Available Balance</span>
               </div>
             </div>
@@ -127,7 +126,7 @@ export default function ProfilePage() {
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
-            <CardDescription>Update your personal details and preferences</CardDescription>
+            <CardDescription>Update your personal details</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -163,41 +162,70 @@ export default function ProfilePage() {
                     disabled={!isEditing}
                   />
                 </div>
+              </div>
+              {/* Separated Address Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
+                  <Label htmlFor="houseNo">House No.</Label>
                   <Input
-                    id="location"
-                    name="location"
-                    value={formData.location}
+                    id="houseNo"
+                    name="houseNo"
+                    value={formData.houseNo}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="areaName">Area Name</Label>
+                  <Input
+                    id="areaName"
+                    name="areaName"
+                    value={formData.areaName}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="landmark">Landmark</Label>
+                  <Input
+                    id="landmark"
+                    name="landmark"
+                    value={formData.landmark}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="postOffice">Post Office</Label>
+                  <Input
+                    id="postOffice"
+                    name="postOffice"
+                    value={formData.postOffice}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Input
+                    id="state"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pin">Pin</Label>
+                  <Input
+                    id="pin"
+                    name="pin"
+                    value={formData.pin}
                     onChange={handleInputChange}
                     disabled={!isEditing}
                   />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="weddingDate">Wedding Date</Label>
-                <Input
-                  id="weddingDate"
-                  name="weddingDate"
-                  type="date"
-                  value={formData.weddingDate}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="partner">Partner</Label>
-                <Input
-                  id="partner"
-                  name="partner"
-                  value={formData.partner}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                />
-              </div>
-
               {isEditing && (
                 <div className="flex justify-end gap-4">
                   <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
@@ -210,32 +238,16 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Additional Settings */}
+        {/* Wallet Section */}
         <Card className="md:col-span-3">
           <CardHeader>
-            <CardTitle>Preferences</CardTitle>
-            <CardDescription>Customize your account settings and notifications</CardDescription>
+            <CardTitle>Wallet</CardTitle>
+            <CardDescription>Your wallet and coin balance</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <h4 className="font-medium">Email Notifications</h4>
-                <p className="text-sm text-gray-500">
-                  Receive updates about your bookings, messages, and important announcements
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-medium">Privacy Settings</h4>
-                <p className="text-sm text-gray-500">
-                  Control what information is visible to vendors and other users
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-medium">Language & Region</h4>
-                <p className="text-sm text-gray-500">
-                  Set your preferred language and regional preferences
-                </p>
-              </div>
+            <div className="flex items-center gap-4">
+              <CoinDisplay balance={userCoins} />
+              <span className="text-lg font-semibold">{userCoins} Coins</span>
             </div>
           </CardContent>
         </Card>

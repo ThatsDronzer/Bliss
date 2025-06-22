@@ -33,7 +33,7 @@ export function FeaturedVendors() {
               <div className="flex items-center gap-1">
                 <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                 <span className="text-sm font-medium">{vendor.rating}</span>
-                <span className="text-sm text-gray-500">({vendor.reviews})</span>
+                <span className="text-sm text-gray-500">({vendor.reviews.length} reviews)</span>
               </div>
             </div>
 
@@ -51,10 +51,6 @@ export function FeaturedVendors() {
             <div className="flex justify-between items-center">
               <span className="font-semibold text-primary">{vendor.price}</span>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline">
-                  <MessageCircle className="w-4 h-4 mr-1" />
-                  Message
-                </Button>
                 <Button size="sm">View Details</Button>
               </div>
             </div>

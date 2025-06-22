@@ -20,6 +20,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
+import { CoinDisplay } from "@/components/ui/coin-display"
+import { CoinHistory } from "@/components/coin-history"
+import { CoinService } from "@/lib/coin-service"
 
 export default function VendorProfilePage() {
   const router = useRouter()
@@ -35,6 +38,12 @@ export default function VendorProfilePage() {
     established: "",
     website: "",
   })
+  const [coinBalance, setCoinBalance] = useState(0)
+  const [coinTransactions, setCoinTransactions] = useState([])
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false)
+  const [refundPolicy, setRefundPolicy] = useState(vendor?.refundPolicy || { description: '', cancellationTerms: [] })
+  const [refundDescription, setRefundDescription] = useState(refundPolicy.description || '')
+  const [cancellationTerms, setCancellationTerms] = useState(refundPolicy.cancellationTerms || [])
 
   // Set initial profile data when vendor is loaded
   useEffect(() => {
@@ -49,6 +58,9 @@ export default function VendorProfilePage() {
         established: vendor.established,
         website: vendor.website,
       })
+      // Fetch wallet info
+      CoinService.getUserBalance(vendor.id).then(setCoinBalance)
+      CoinService.getUserTransactions(vendor.id).then(setCoinTransactions)
     }
   }, [vendor])
 
@@ -81,6 +93,17 @@ export default function VendorProfilePage() {
       title: "Profile updated",
       description: "Your business profile information has been updated successfully",
     })
+  }
+
+  const handleSaveRefundPolicy = () => {
+    // Save refund policy (should call updateVendorProfile or similar API)
+    setRefundPolicy({ description: refundDescription, cancellationTerms })
+    setRefundDialogOpen(false)
+    toast({
+      title: "Refund Policy updated",
+      description: "Your refund policy has been updated successfully",
+    })
+    // TODO: Persist refund policy to backend/profile
   }
 
   return (
@@ -143,74 +166,55 @@ export default function VendorProfilePage() {
                   <p>{vendor.established}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <Globe className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Website</p>
-                  <p>{vendor.website}</p>
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Business Details</CardTitle>
-            <CardDescription>Information about your business</CardDescription>
+            <CardTitle>Wallet</CardTitle>
+            <CardDescription>Your coin balance and transaction history</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-medium mb-2">About</h3>
-                <p className="text-gray-700">{vendor.description}</p>
-              </div>
+            <div className="mb-6">
+              <CoinDisplay balance={coinBalance} />
+            </div>
+            <CoinHistory transactions={coinTransactions} />
+          </CardContent>
+        </Card>
+      </div>
 
-              <div>
-                <h3 className="font-medium mb-2">Services</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 rounded-lg border">
-                    <p className="text-sm text-gray-500">Main Hall</p>
-                    <p className="font-medium">₹2,50,000</p>
-                    <p className="text-xs text-gray-500 mt-1">Capacity: 500 guests</p>
-                  </div>
-                  <div className="p-3 rounded-lg border">
-                    <p className="text-sm text-gray-500">Garden Area</p>
-                    <p className="font-medium">₹1,75,000</p>
-                    <p className="text-xs text-gray-500 mt-1">Capacity: 300 guests</p>
-                  </div>
-                  <div className="p-3 rounded-lg border">
-                    <p className="text-sm text-gray-500">Banquet Hall</p>
-                    <p className="font-medium">₹1,50,000</p>
-                    <p className="text-xs text-gray-500 mt-1">Capacity: 150 guests</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-medium mb-2">Business Hours</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <span>Monday - Friday</span>
-                    <span>10:00 AM - 8:00 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Saturday</span>
-                    <span>10:00 AM - 6:00 PM</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Sunday</span>
-                    <span>By Appointment</span>
-                  </div>
-                </div>
-              </div>
+      <div className="mt-8">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Refund Policy</CardTitle>
+              <CardDescription>Manage your business refund and cancellation policy</CardDescription>
+            </div>
+            <Button variant="outline" onClick={() => setRefundDialogOpen(true)}>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-2">
+              <span className="font-semibold">Description:</span>
+              <p className="text-gray-700 mt-1">{refundPolicy.description || 'No refund policy set.'}</p>
+            </div>
+            <div>
+              <span className="font-semibold">Cancellation Terms:</span>
+              <ul className="list-disc ml-6 mt-1">
+                {refundPolicy.cancellationTerms && refundPolicy.cancellationTerms.length > 0 ? (
+                  refundPolicy.cancellationTerms.map((term, idx) => (
+                    <li key={idx} className="text-gray-700">
+                      {term.daysBeforeEvent} days before event: {term.refundPercentage}% refund
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-500">No terms set.</li>
+                )}
+              </ul>
             </div>
           </CardContent>
-          <CardFooter>
-            <Button variant="outline" className="w-full" onClick={() => router.push("/vendor-dashboard/listings")}>
-              Manage Listings
-            </Button>
-          </CardFooter>
         </Card>
       </div>
 
@@ -296,6 +300,74 @@ export default function VendorProfilePage() {
               Cancel
             </Button>
             <Button onClick={handleSaveProfile}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Refund Policy</DialogTitle>
+            <DialogDescription>Update your refund policy and cancellation terms</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="refund-description">Description</Label>
+              <Textarea
+                id="refund-description"
+                value={refundDescription}
+                onChange={e => setRefundDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Cancellation Terms</Label>
+              <ul className="space-y-2">
+                {cancellationTerms.map((term, idx) => (
+                  <li key={idx} className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={term.daysBeforeEvent}
+                      onChange={e => {
+                        const updated = [...cancellationTerms]
+                        updated[idx].daysBeforeEvent = Number(e.target.value)
+                        setCancellationTerms(updated)
+                      }}
+                      className="w-24"
+                      placeholder="Days before"
+                    />
+                    <span>days before event:</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={term.refundPercentage}
+                      onChange={e => {
+                        const updated = [...cancellationTerms]
+                        updated[idx].refundPercentage = Number(e.target.value)
+                        setCancellationTerms(updated)
+                      }}
+                      className="w-20"
+                      placeholder="% refund"
+                    />
+                    <span>% refund</span>
+                    <Button variant="ghost" size="icon" onClick={() => setCancellationTerms(cancellationTerms.filter((_, i) => i !== idx))}>
+                      ×
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              <Button variant="outline" className="mt-2" onClick={() => setCancellationTerms([...cancellationTerms, { daysBeforeEvent: 1, refundPercentage: 0 }])}>
+                + Add Term
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveRefundPolicy}>Save Policy</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

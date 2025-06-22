@@ -8,11 +8,7 @@ import {
   Store,
   BookMarked,
   CreditCard,
-  BarChart,
-  Settings,
-  Tag,
-  Bell,
-  FileText,
+  MessageSquare,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -46,30 +42,9 @@ const navItems = [
     icon: <CreditCard className="w-5 h-5" />,
   },
   {
-    title: "Categories",
-    href: "/admin-dashboard/categories",
-    icon: <Tag className="w-5 h-5" />,
-  },
-  {
-    title: "Analytics",
-    href: "/admin-dashboard/analytics",
-    icon: <BarChart className="w-5 h-5" />,
-  },
-  {
-    title: "Reports",
-    href: "/admin-dashboard/reports",
-    icon: <FileText className="w-5 h-5" />,
-  },
-  {
-    title: "Notifications",
-    href: "/admin-dashboard/notifications",
-    icon: <Bell className="w-5 h-5" />,
-    badge: 2,
-  },
-  {
-    title: "Settings",
-    href: "/admin-dashboard/settings",
-    icon: <Settings className="w-5 h-5" />,
+    title: "Messages",
+    href: "/admin-dashboard/messages",
+    icon: <MessageSquare className="w-5 h-5" />,
   },
 ]
 
@@ -77,7 +52,7 @@ export function AdminDashboardSidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="w-64 border-r h-[calc(100vh-64px)] bg-white">
+    <div className="w-64 border-r h-[calc(100vh-64px)] bg-white fixed top-16 left-0 z-30">
       <ScrollArea className="h-full py-4">
         <div className="px-3 py-2">
           <h2 className="mb-2 px-4 text-lg font-semibold">Admin Dashboard</h2>
@@ -90,11 +65,6 @@ export function AdminDashboardSidebar() {
                 >
                   {item.icon}
                   <span className="ml-2">{item.title}</span>
-                  {item.badge && (
-                    <span className="ml-auto bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {item.badge}
-                    </span>
-                  )}
                 </Button>
               </Link>
             ))}

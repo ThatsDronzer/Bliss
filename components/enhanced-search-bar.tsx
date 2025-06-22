@@ -28,8 +28,8 @@ export function EnhancedSearchBar() {
 
   // Demo suggestions data
   const suggestions: SearchSuggestion[] = [
-    { type: "recent", title: "Event Photography", subtitle: "Mumbai", icon: <Clock className="w-4 h-4" /> },
-    { type: "recent", title: "Birthday Decoration", subtitle: "Delhi", icon: <Clock className="w-4 h-4" /> },
+    { type: "recent", title: "Event Photography", subtitle: "Delhi", icon: <Clock className="w-4 h-4" /> },
+    { type: "recent", title: "Birthday Decoration", subtitle: "Noida", icon: <Clock className="w-4 h-4" /> },
     {
       type: "popular",
       title: "Grand Palace Banquet",
@@ -49,16 +49,85 @@ export function EnhancedSearchBar() {
   ]
 
   const locations = [
-    "Mumbai",
+    "Delhi NCR",
     "Delhi",
-    "Bangalore",
-    "Chennai",
-    "Kolkata",
-    "Hyderabad",
-    "Pune",
-    "Ahmedabad",
-    "Jaipur",
-    "Lucknow",
+    "Noida",
+    "Gurgaon",
+    "Faridabad",
+    "Ghaziabad",
+    "Greater Noida",
+    // Popular areas in Delhi
+    "Rohini",
+    "Punjabi Bagh",
+    "Uttam Nagar",
+    "Dwarka",
+    "Saket",
+    "Lajpat Nagar",
+    "Karol Bagh",
+    "Janakpuri",
+    "Vasant Kunj",
+    "Connaught Place",
+    "Pitampura",
+    "Preet Vihar",
+    "Mayur Vihar",
+    "Rajouri Garden",
+    "Hauz Khas",
+    "Chandni Chowk",
+    "Okhla",
+    "Shahdara",
+    "Nehru Place",
+    "Greater Kailash",
+    "South Extension",
+    "Malviya Nagar",
+    "Ashok Vihar",
+    "Paschim Vihar",
+    "Model Town",
+    "Dwarka Mor",
+    "Azadpur",
+    "Jangpura",
+    "Tilak Nagar",
+    "Kalkaji",
+    "Sarita Vihar",
+    "Patel Nagar",
+    "Moti Nagar",
+    "Shalimar Bagh",
+    "Vikaspuri",
+    "Laxmi Nagar",
+    "Yamuna Vihar",
+    "Seelampur",
+    "Sadar Bazaar",
+    "Civil Lines",
+    "Narela",
+    "Najafgarh",
+    "Mehrauli",
+    "Sultanpur",
+    "Tughlakabad",
+    "Mandawali",
+    "Keshav Puram",
+    "Ramesh Nagar",
+    "Rithala",
+    "Jahangirpuri",
+    "Badarpur",
+    "Munirka",
+    "Vasant Vihar",
+    "Green Park",
+    "Adarsh Nagar",
+    "GTB Nagar",
+    "Kashmere Gate",
+    "Sarai Rohilla",
+    "Sonia Vihar",
+    "Trilokpuri",
+    "Govindpuri",
+    "Sangam Vihar",
+    "Jasola",
+    "Dwarka Sector 21",
+    "Dwarka Sector 12",
+    "Dwarka Sector 10",
+    "Dwarka Sector 7",
+    "Dwarka Sector 6",
+    "Dwarka Sector 5",
+    "Dwarka Sector 3",
+    "Dwarka Sector 1",
   ]
 
   // Simulate location detection
@@ -67,7 +136,7 @@ export function EnhancedSearchBar() {
       navigator.geolocation.getCurrentPosition(
         () => {
           // Simulate detected location
-          setUserLocation("Mumbai")
+          setUserLocation("Delhi NCR")
         },
         () => {
           console.log("Location access denied")
@@ -136,32 +205,21 @@ export function EnhancedSearchBar() {
               <MapPin className="h-5 w-5 text-pink-400" />
             </div>
             <select
-              className="w-full pl-12 pr-16 py-3 bg-transparent border-0 focus:ring-0 focus:outline-none text-sm font-medium appearance-none cursor-pointer text-gray-700 rounded-full"
+              className="w-full pl-12 pr-4 py-3 bg-transparent border-0 focus:ring-0 focus:outline-none text-sm font-medium appearance-none cursor-pointer text-gray-700 rounded-full"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
             >
               <option value="Select Location">Select Location</option>
+              <option value="use-current-location" className="text-pink-600" onClick={detectCurrentLocation}>
+                {isDetectingLocation ? "Detecting Location..." : "Use Current Location"}
+              </option>
+              <option disabled>──────────</option>
               {locations.map((loc) => (
                 <option key={loc} value={loc}>
                   {loc}
                 </option>
               ))}
             </select>
-
-            {/* Live Location Button */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={`absolute right-2 top-1/2 -translate-y-1/2 text-xs hover:bg-pink-50 transition-all duration-200 px-2 py-1 h-auto ${
-                isDetectingLocation ? "animate-pulse" : ""
-              }`}
-              onClick={detectCurrentLocation}
-              disabled={isDetectingLocation}
-            >
-              <Navigation className={`w-3 h-3 mr-1 ${isDetectingLocation ? "animate-spin" : ""}`} />
-              {isDetectingLocation ? "Detecting..." : "Live"}
-            </Button>
           </div>
 
           {/* Search Input */}

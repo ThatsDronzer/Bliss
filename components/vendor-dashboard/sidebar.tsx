@@ -38,11 +38,6 @@ const navItems = [
     icon: <BookMarked className="w-5 h-5" />,
   },
   {
-    title: "Calendar",
-    href: "/vendor-dashboard/calendar",
-    icon: <Calendar className="w-5 h-5" />,
-  },
-  {
     title: "Messages",
     href: "/vendor-dashboard/messages",
     icon: <MessageSquare className="w-5 h-5" />,
@@ -54,19 +49,9 @@ const navItems = [
     icon: <Star className="w-5 h-5" />,
   },
   {
-    title: "Analytics",
-    href: "/vendor-dashboard/analytics",
-    icon: <BarChart className="w-5 h-5" />,
-  },
-  {
     title: "Profile",
     href: "/vendor-dashboard/profile",
     icon: <User className="w-5 h-5" />,
-  },
-  {
-    title: "Settings",
-    href: "/vendor-dashboard/settings",
-    icon: <Settings className="w-5 h-5" />,
   },
 ]
 

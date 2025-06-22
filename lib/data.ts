@@ -1,5 +1,126 @@
+import { type Vendor } from "./types"
+
 // Vendor data
-export const vendors = [
+export const vendors: Vendor[] = [
+  {
+    id: "v1",
+    name: "Royal Wedding Palace",
+    rating: 4.8,
+    reviewsCount: 320,
+    image: "/vendors/royal-palace.jpg",
+    coverImage: "/vendors/royal-palace-cover.jpg",
+    location: "Delhi NCR",
+    experience: "12+ years",
+    description: "Premier wedding venue with world-class amenities and exceptional service.",
+    phone: "+91 98765 43210",
+    email: "info@royalweddingpalace.com",
+    featured: true,
+    verified: true,
+    topServices: ["Banquet Hall", "Outdoor Venue", "Catering"],
+    services: [
+      {
+        id: "s1",
+        name: "Grand Banquet Hall",
+        price: 150000,
+        category: "Venue",
+        description: "Luxurious banquet hall with modern amenities",
+        customizations: [
+          {
+            id: 1,
+            name: "Premium Decoration",
+            price: 25000,
+            description: "Elegant decor with premium flowers and materials",
+            required: false
+          },
+          {
+            id: 2,
+            name: "LED Wall",
+            price: 15000,
+            description: "High-quality LED wall for photos and videos",
+            required: false
+          }
+        ],
+        minQuantity: 1,
+        maxQuantity: 1
+      },
+      {
+        id: "s2",
+        name: "Outdoor Garden",
+        price: 100000,
+        category: "Venue",
+        description: "Beautiful garden venue for outdoor ceremonies",
+        customizations: [
+          {
+            id: 3,
+            name: "Tent Setup",
+            price: 30000,
+            description: "Premium tent with lighting and cooling",
+            required: false
+          }
+        ],
+        minQuantity: 1,
+        maxQuantity: 1
+      }
+    ],
+    packages: [
+      {
+        id: 1,
+        name: "Royal Wedding Package",
+        price: 250000,
+        description: "Complete wedding package including venue, catering, and decor",
+        services: ["s1", "s2"],
+        savings: 50000
+      },
+      {
+        id: 2,
+        name: "Basic Ceremony Package",
+        price: 150000,
+        description: "Essential wedding services package",
+        services: ["s2"],
+        savings: 25000
+      }
+    ],
+    availability: [
+      {
+        date: "2024-03-20",
+        slots: [
+          { time: "Morning (8 AM - 2 PM)", available: true },
+          { time: "Evening (4 PM - 10 PM)", available: false }
+        ]
+      },
+      {
+        date: "2024-03-21",
+        slots: [
+          { time: "Morning (8 AM - 2 PM)", available: true },
+          { time: "Evening (4 PM - 10 PM)", available: true }
+        ]
+      }
+    ],
+    refundPolicy: {
+      description: "We offer a flexible refund policy based on the cancellation notice period.",
+      cancellationTerms: [
+        { daysBeforeEvent: 30, refundPercentage: 90 },
+        { daysBeforeEvent: 15, refundPercentage: 75 },
+        { daysBeforeEvent: 7, refundPercentage: 50 }
+      ]
+    },
+    reviews: [
+      {
+        id: "r1",
+        name: "Priya Sharma",
+        rating: 5,
+        comment: "Amazing venue with excellent service. The staff was very professional and helpful.",
+        date: "2024-02-15"
+      },
+      {
+        id: "r2",
+        name: "Rahul Verma",
+        rating: 4,
+        comment: "Great experience overall. The venue is beautiful and well-maintained.",
+        date: "2024-02-10"
+      }
+    ]
+  },
   {
     id: "venue-example",
     name: "Grand Event Center",

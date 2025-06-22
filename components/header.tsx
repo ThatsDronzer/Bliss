@@ -90,13 +90,6 @@ export function Header() {
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 group-hover:w-full transition-all duration-300"></span>
               </Link>
               <Link
-                href="/contact"
-                className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors duration-200 relative group"
-              >
-                Contact & Support
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 group-hover:w-full transition-all duration-300"></span>
-              </Link>
-              <Link
                 href="/about"
                 className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors duration-200 relative group"
               >
@@ -111,24 +104,28 @@ export function Header() {
             {isAuthenticated ? (
               <>
                 {/* Coin Display */}
-                <Link href="/dashboard/coins">
-                  <CoinDisplay balance={userCoins} className="hidden lg:flex" />
-                </Link>
+                {!(isVendor || isAdmin) && (
+                  <Link href="/dashboard/coins">
+                    <CoinDisplay balance={userCoins} className="hidden lg:flex" />
+                  </Link>
+                )}
                 
                 {/* Cart Button - Only visible after login */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative hover:bg-pink-50 transition-all duration-200 rounded-full"
-                  onClick={() => router.push("/cart")}
-                >
-                  <ShoppingCart className="h-5 w-5 text-gray-700" />
-                  {cartItemsCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 w-5 h-5 rounded-full p-0 flex items-center justify-center text-xs bg-pink-500 border-2 border-white">
-                      {cartItemsCount}
-                    </Badge>
-                  )}
-                </Button>
+                {!(isVendor || isAdmin) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="relative hover:bg-pink-50 transition-all duration-200 rounded-full"
+                    onClick={() => router.push("/cart")}
+                  >
+                    <ShoppingCart className="h-5 w-5 text-gray-700" />
+                    {cartItemsCount > 0 && (
+                      <Badge className="absolute -top-1 -right-1 w-5 h-5 rounded-full p-0 flex items-center justify-center text-xs bg-pink-500 border-2 border-white">
+                        {cartItemsCount}
+                      </Badge>
+                    )}
+                  </Button>
+                )}
 
                 {/* Desktop Action Buttons */}
                 <div className="hidden lg:flex items-center gap-2">
@@ -222,9 +219,6 @@ export function Header() {
                     </Link>
                     <Link href="/home-service" className="block text-base font-medium hover:text-pink-600 transition-colors">
                       Home Services
-                    </Link>
-                    <Link href="/contact" className="block text-base font-medium hover:text-pink-600 transition-colors">
-                      Contact & Support
                     </Link>
                     <Link href="/about" className="block text-base font-medium hover:text-pink-600 transition-colors">
                       About Us

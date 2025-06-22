@@ -38,35 +38,19 @@ const navItems = [
     icon: <Coins className="w-5 h-5" />,
   },
   {
-    title: "Referral Program",
-    href: "/dashboard/referral",
-    icon: <Gift className="w-5 h-5" />,
-  },
-  {
     title: "Favorites",
     href: "/dashboard/favorites",
     icon: <Heart className="w-5 h-5" />,
   },
   {
-    title: "Messages",
-    href: "/dashboard/messages",
+    title: "Contact & Support",
+    href: "/dashboard/contact-support",
     icon: <MessageSquare className="w-5 h-5" />,
-    badge: 2,
-  },
-  {
-    title: "Payments",
-    href: "/dashboard/payments",
-    icon: <CreditCard className="w-5 h-5" />,
   },
   {
     title: "Profile",
     href: "/dashboard/profile",
     icon: <User className="w-5 h-5" />,
-  },
-  {
-    title: "Settings",
-    href: "/dashboard/settings",
-    icon: <Settings className="w-5 h-5" />,
   },
 ]
 
@@ -91,11 +75,6 @@ export function DashboardSidebar() {
             >
               {item.icon}
               <span className="ml-2">{item.title}</span>
-              {item.badge && (
-                <span className="ml-auto bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {item.badge}
-                </span>
-              )}
             </Button>
           </Link>
         ))}

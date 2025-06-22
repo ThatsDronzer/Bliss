@@ -1,7 +1,6 @@
 import { EnhancedSearchBar } from "@/components/enhanced-search-bar"
 import { FeaturedVendors } from "@/components/featured-vendors"
 import { TestimonialsSection } from "@/components/testimonials-section"
-import { AboutSection } from "@/components/about-section"
 import { TrustSection } from "@/components/trust-section"
 import { ServicesSection } from "@/components/services-section"
 import { HomeServiceAdvertisement } from "@/components/home-service-advertisement"
@@ -11,8 +10,9 @@ import Link from "next/link"
 import { Calendar, Gift, Cake, Music, Camera, Utensils, MapPin } from "lucide-react"
 import Image from "next/image"
 import { Star } from "lucide-react"
+import { NewsletterSection } from "@/components/newsletter-section"
 
-export default function Home() {
+export default function HomePage() {
   return (
     <main className="min-h-screen">
       {/* Hero Section */}
@@ -38,12 +38,6 @@ export default function Home() {
         {/* Content */}
         <div className="container mx-auto px-4 relative z-20">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-block mb-8">
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-sm">
-                <span className="w-2 h-2 rounded-full bg-pink-500 animate-pulse"></span>
-                Trusted by 10,000+ Happy Customers
-              </span>
-            </div>
             
             <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold text-white mb-6 leading-tight">
               Find the
@@ -66,22 +60,6 @@ export default function Home() {
               <div className="absolute inset-0 bg-pink-500/20 blur-xl"></div>
               <div className="relative bg-white/95 backdrop-blur-sm rounded-full shadow-xl p-1">
                 <EnhancedSearchBar />
-              </div>
-            </div>
-
-            {/* Trust Indicators */}
-            <div className="mt-12 flex flex-wrap justify-center gap-8 text-white/80 text-sm">
-              <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                <span>4.9/5 Rating</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                <span>50,000+ Events</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Gift className="w-5 h-5" />
-                <span>2,000+ Vendors</span>
               </div>
             </div>
           </div>
@@ -191,14 +169,14 @@ export default function Home() {
       {/* Trust Section */}
       <TrustSection />
 
-      {/* About Us */}
-      <AboutSection />
-
       {/* Services We Offer */}
       <ServicesSection />
 
       {/* Testimonials */}
       <TestimonialsSection />
+
+      {/* Newsletter */}
+      <NewsletterSection />
 
       {/* CTA Section */}
       <section className="py-20 bg-pink-600 text-white relative">
@@ -235,4 +213,4 @@ export default function Home() {
       <Footer />
     </main>
   )
-} 
+}

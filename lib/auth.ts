@@ -996,9 +996,9 @@ export const useAuth = create<AuthState>()(
       adminCategories: mockCategories,
       adminNotifications: mockAdminNotifications,
       login: async (email: string, password: string, userType: "user" | "vendor" | "admin") => {
-        // For demo purposes, accept any email with password "password123"
-        if (password === "password123") {
-          if (userType === "admin") {
+        // For admin login
+        if (userType === "admin") {
+          if (email === "admin@blissmet.in" && password === "blissmet@admin2024") {
             set({
               admin: demoAdmin,
               isAuthenticated: true,
@@ -1007,7 +1007,14 @@ export const useAuth = create<AuthState>()(
               user: null,
               vendor: null,
             })
-          } else if (userType === "vendor") {
+            return { success: true, message: "Login successful" }
+          }
+          return { success: false, message: "Invalid email or password" }
+        }
+        
+        // For other user types, accept any email with password "password123"
+        if (password === "password123") {
+          if (userType === "vendor") {
             set({
               vendor: demoVendor,
               isAuthenticated: true,

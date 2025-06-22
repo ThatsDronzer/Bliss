@@ -63,21 +63,6 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.name}</h1>
           <p className="text-gray-500 mt-1">Here's what's happening with your wedding planning</p>
         </div>
-        <div className="mt-4 md:mt-0 flex gap-3">
-          <Button
-            variant="outline"
-            onClick={() => router.push("/vendors")}
-            className="dashboard-button-outline"
-          >
-            Browse Vendors
-          </Button>
-          <Button
-            onClick={() => router.push("/dashboard/events/new")}
-            className="dashboard-button"
-          >
-            Plan New Event
-          </Button>
-        </div>
       </div>
 
       <div className="dashboard-stats">
@@ -86,26 +71,6 @@ export default function DashboardPage() {
           value={bookings.length.toString()}
           icon={BookMarked}
           description={`${bookings.filter(b => b.status.toLowerCase() === "confirmed").length} confirmed`}
-          className="dashboard-stat-card"
-        />
-        <StatsCard
-          title="Total Spent"
-          value={`₹${bookings.reduce((sum, b) => sum + parseInt(b.amount), 0).toLocaleString()}`}
-          icon={BarChart}
-          description="Wedding budget utilized"
-          className="dashboard-stat-card"
-        />
-        <StatsCard
-          title="Saved Vendors"
-          value={favorites.length.toString()}
-          icon={Heart}
-          trend={{ value: "+5 this week", positive: true }}
-          className="dashboard-stat-card"
-        />
-        <StatsCard
-          title="Unread Messages"
-          value={unreadMessages.toString()}
-          icon={MessageSquare}
           className="dashboard-stat-card"
         />
       </div>
@@ -217,68 +182,17 @@ export default function DashboardPage() {
       <div className="mt-8">
         <Card className="dashboard-card">
           <CardHeader className="dashboard-card-header">
-            <CardTitle className="dashboard-card-title">Rewards & Referrals</CardTitle>
-            <CardDescription className="dashboard-card-description">Your rewards and referral program status</CardDescription>
+            <CardTitle className="dashboard-card-title">Referral Program</CardTitle>
+            <CardDescription className="dashboard-card-description">Invite friends and earn rewards</CardDescription>
           </CardHeader>
           <CardContent className="dashboard-card-content">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="p-6 rounded-lg bg-gradient-to-br from-pink-50 to-purple-50 border border-pink-100">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="dashboard-icon-container">
-                    <Gift className="dashboard-icon" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Bliss Coins</p>
-                    <p className="text-2xl font-bold text-gray-900">{userCoins}</p>
-                  </div>
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="dashboard-button-outline w-full"
-                  onClick={() => router.push("/dashboard/rewards")}
-                >
-                  Redeem Coins
-                </Button>
-              </div>
-
-              <div className="p-6 rounded-lg bg-gradient-to-br from-pink-50 to-purple-50 border border-pink-100">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="dashboard-icon-container">
-                    <Users className="dashboard-icon" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Referrals</p>
-                    <p className="text-2xl font-bold text-gray-900">5</p>
-                  </div>
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="dashboard-button-outline w-full"
-                  onClick={() => router.push("/dashboard/referral")}
-                >
-                  Invite Friends
-                </Button>
-              </div>
-
-              <div className="p-6 rounded-lg bg-gradient-to-br from-pink-50 to-purple-50 border border-pink-100">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="dashboard-icon-container">
-                    <Star className="dashboard-icon" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Reviews Given</p>
-                    <p className="text-2xl font-bold text-gray-900">3</p>
-                  </div>
-                </div>
-                <Button 
-                  variant="outline" 
-                  className="dashboard-button-outline w-full"
-                  onClick={() => router.push("/dashboard/reviews")}
-                >
-                  Write Review
-                </Button>
-              </div>
-            </div>
+            <Button 
+              variant="outline" 
+              className="dashboard-button-outline w-full"
+              onClick={() => router.push("/dashboard/referral")}
+            >
+              Invite Friends
+            </Button>
           </CardContent>
         </Card>
       </div>

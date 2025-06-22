@@ -1,65 +1,97 @@
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { PlaceholderImage } from './PlaceholderImage';
+"use client"
+
+import { useState } from "react"
+import Image from "next/image"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { Card } from "@/components/ui/card"
+import { ChevronLeft, ChevronRight, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface ImageGalleryProps {
-  images: string[];
+  images: string[]
 }
 
 export function ImageGallery({ images }: ImageGalleryProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedImage, setSelectedImage] = useState<number | null>(null)
 
-  const nextImage = () => {
-    setCurrentIndex((prev) => (prev + 1) % images.length);
-  };
+  const handlePrevious = () => {
+    if (selectedImage === null) return
+    setSelectedImage(selectedImage === 0 ? images.length - 1 : selectedImage - 1)
+  }
 
-  const previousImage = () => {
-    setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-  };
+  const handleNext = () => {
+    if (selectedImage === null) return
+    setSelectedImage(selectedImage === images.length - 1 ? 0 : selectedImage + 1)
+  }
+
+  if (images.length === 0) {
+    return (
+      <div className="text-center py-12 bg-gray-50 rounded-lg">
+        <p className="text-gray-500">No images available</p>
+      </div>
+    )
+  }
 
   return (
-    <div className="relative w-full">
-      <div className="aspect-[16/9] relative overflow-hidden rounded-lg">
-        <PlaceholderImage
-          src={images[currentIndex]}
-          alt={`Gallery image ${currentIndex + 1}`}
-          fill
-          className="object-cover"
-          priority={currentIndex === 0}
-        />
-      </div>
-
-      <div className="absolute inset-0 flex items-center justify-between p-4">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm"
-          onClick={previousImage}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 rounded-full bg-white/80 backdrop-blur-sm"
-          onClick={nextImage}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="flex justify-center mt-4 gap-2">
-        {images.map((_, index) => (
-          <button
+    <>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {images.map((image, index) => (
+          <Card
             key={index}
-            className={`w-2 h-2 rounded-full transition-colors ${
-              index === currentIndex ? 'bg-primary' : 'bg-gray-300'
-            }`}
-            onClick={() => setCurrentIndex(index)}
-          />
+            className="relative aspect-square cursor-pointer overflow-hidden hover:opacity-90 transition-opacity"
+            onClick={() => setSelectedImage(index)}
+          >
+            <Image
+              src={image}
+              alt={`Gallery image ${index + 1}`}
+              fill
+              className="object-cover"
+            />
+          </Card>
         ))}
       </div>
-    </div>
-  );
-} 
+
+      <Dialog open={selectedImage !== null} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl p-0 bg-black/95">
+          <div className="relative h-[80vh]">
+            {selectedImage !== null && (
+              <Image
+                src={images[selectedImage]}
+                alt={`Gallery image ${selectedImage + 1}`}
+                fill
+                className="object-contain"
+              />
+            )}
+            
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 text-white hover:bg-white/20"
+              onClick={() => setSelectedImage(null)}
+            >
+              <X className="h-6 w-6" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
+              onClick={handlePrevious}
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-white hover:bg-white/20"
+              onClick={handleNext}
+            >
+              <ChevronRight className="h-6 w-6" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}

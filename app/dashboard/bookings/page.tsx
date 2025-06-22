@@ -38,8 +38,17 @@ export default function BookingsPage() {
     return null
   }
 
+  // Sort bookings: pending payment first, then confirmed, then others
+  const sortedBookings = [...mockBookings].sort((a, b) => {
+    if (a.paymentStatus === "Pending" && b.paymentStatus !== "Pending") return -1;
+    if (a.paymentStatus !== "Pending" && b.paymentStatus === "Pending") return 1;
+    if (a.status === "Confirmed" && b.status !== "Confirmed") return -1;
+    if (a.status !== "Confirmed" && b.status === "Confirmed") return 1;
+    return 0;
+  });
+
   // Filter bookings based on search and status
-  const filteredBookings = mockBookings.filter((booking) => {
+  const filteredBookings = sortedBookings.filter((booking) => {
     const matchesSearch =
       booking.vendorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       booking.vendorCategory.toLowerCase().includes(searchQuery.toLowerCase())
@@ -248,6 +257,11 @@ export default function BookingsPage() {
               <Button variant="outline" onClick={() => setDialogOpen(false)}>
                 Close
               </Button>
+              {selectedBooking.paymentStatus === "Pending" && (
+                <Button onClick={() => {/* handle payment logic here */}}>
+                  Pay Now
+                </Button>
+              )}
               <Button>Download Invoice</Button>
             </DialogFooter>
           </DialogContent>

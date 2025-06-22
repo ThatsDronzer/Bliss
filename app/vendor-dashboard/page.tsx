@@ -42,31 +42,6 @@ export default function VendorDashboardPage() {
           <h1 className="text-3xl font-bold">Welcome back, {vendor.name}</h1>
           <p className="text-gray-500 mt-1">Here's what's happening with your business today</p>
         </div>
-        <div className="mt-4 md:mt-0">
-          <Button onClick={() => router.push("/vendor-dashboard/listings/new")}>Add New Listing</Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatsCard
-          title="Total Bookings"
-          value={vendorAnalytics.bookings.total.toString()}
-          icon={BookMarked}
-          description={`${vendorAnalytics.bookings.confirmed} confirmed, ${vendorAnalytics.bookings.pending} pending`}
-        />
-        <StatsCard
-          title="Total Revenue"
-          value={vendorAnalytics.revenue.total}
-          icon={BarChart}
-          description={`${vendorAnalytics.revenue.received} received`}
-        />
-        <StatsCard
-          title="Profile Views"
-          value={vendorAnalytics.profileViews.total.toString()}
-          icon={Users}
-          trend={{ value: "+12% this month", positive: true }}
-        />
-        <StatsCard title="Unread Messages" value={unreadMessages.toString()} icon={MessageSquare} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
@@ -120,9 +95,6 @@ export default function VendorDashboardPage() {
                   <p className="text-gray-500">No upcoming bookings</p>
                 </div>
               )}
-              <Button variant="outline" className="w-full" onClick={() => router.push("/vendor-dashboard/bookings")}>
-                View All Bookings
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -174,84 +146,6 @@ export default function VendorDashboardPage() {
                   </div>
                 ))}
               </div>
-
-              <Button variant="outline" className="w-full" onClick={() => router.push("/vendor-dashboard/reviews")}>
-                View All Reviews
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Booking Analytics</CardTitle>
-            <CardDescription>Monthly booking trends</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px] flex items-end gap-2">
-              {vendorAnalytics.bookings.monthlyData.map((data) => (
-                <div key={data.month} className="flex flex-col items-center flex-1">
-                  <div
-                    className="w-full bg-primary/20 rounded-t-sm"
-                    style={{ height: `${(data.bookings / 4) * 100}%` }}
-                  >
-                    <div
-                      className="w-full bg-primary rounded-t-sm"
-                      style={{ height: `${(data.bookings / 4) * 100}%` }}
-                    ></div>
-                  </div>
-                  <span className="text-xs mt-2">{data.month}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 text-center">
-              <Button variant="outline" onClick={() => router.push("/vendor-dashboard/analytics")}>
-                View Detailed Analytics
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Messages</CardTitle>
-            <CardDescription>Latest client inquiries</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {messages
-                .filter((msg) => msg.vendorId === "venue-example")
-                .slice(0, 3)
-                .map((message) => (
-                  <div
-                    key={message.id}
-                    className="flex items-center gap-4 p-3 rounded-lg border cursor-pointer hover:bg-gray-50"
-                    onClick={() => router.push("/vendor-dashboard/messages")}
-                  >
-                    <div className="w-10 h-10 rounded-full overflow-hidden">
-                      <Image
-                        src={message.clientImage || "/placeholder.svg"}
-                        alt={message.clientName}
-                        width={40}
-                        height={40}
-                        className="object-cover w-full h-full"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center">
-                        <h4 className="font-medium">{message.clientName}</h4>
-                        {message.unread && <span className="ml-2 w-2 h-2 rounded-full bg-primary"></span>}
-                      </div>
-                      <p className="text-sm text-gray-500 line-clamp-1">{message.lastMessage}</p>
-                    </div>
-                    <div className="text-xs text-gray-500">{new Date(message.date).toLocaleDateString()}</div>
-                  </div>
-                ))}
-              <Button variant="outline" className="w-full" onClick={() => router.push("/vendor-dashboard/messages")}>
-                View All Messages
-              </Button>
             </div>
           </CardContent>
         </Card>

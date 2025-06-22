@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search, MoreHorizontal, Download, CheckCircle, XCircle } from "lucide-react"
+import { Search, MoreHorizontal, Download, CheckCircle, XCircle, Calendar as CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
 
 import { useAuth } from "@/lib/auth"
 import { useBooking } from "@/hooks/use-booking"
@@ -10,6 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "@/components/ui/use-toast"
+import { cn } from "@/lib/utils"
 
 export default function AdminBookingsPage() {
   const router = useRouter()
@@ -26,6 +30,7 @@ export default function AdminBookingsPage() {
   const { handleBookingCompletion, isProcessing } = useBooking()
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
 
   // Redirect if not authenticated as admin
   useEffect(() => {
@@ -38,7 +43,7 @@ export default function AdminBookingsPage() {
     return null
   }
 
-  // Filter bookings based on search and status
+  // Filter bookings based on search, status, and date
   const filteredBookings = bookings.filter((booking) => {
     const matchesSearch =
       booking.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -46,7 +51,10 @@ export default function AdminBookingsPage() {
 
     const matchesStatus = statusFilter === "all" || booking.status.toLowerCase() === statusFilter.toLowerCase()
 
-    return matchesSearch && matchesStatus
+    const matchesDate = !selectedDate || 
+      new Date(booking.bookingDate).toDateString() === selectedDate.toDateString()
+
+    return matchesSearch && matchesStatus && matchesDate
   })
 
   const handleExportBookings = () => {
@@ -66,6 +74,10 @@ export default function AdminBookingsPage() {
       numericAmount,
       newStatus
     )
+  }
+
+  const clearDateFilter = () => {
+    setSelectedDate(undefined)
   }
 
   return (
@@ -106,6 +118,35 @@ export default function AdminBookingsPage() {
             </SelectContent>
           </Select>
         </div>
+        <div className="w-full md:w-auto">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full md:w-[200px] justify-start text-left font-normal",
+                  !selectedDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        {selectedDate && (
+          <Button variant="ghost" onClick={clearDateFilter} className="w-full md:w-auto">
+            Clear Date
+          </Button>
+        )}
       </div>
 
       <div className="rounded-md border">

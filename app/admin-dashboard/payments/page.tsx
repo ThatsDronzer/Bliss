@@ -195,7 +195,15 @@ export default function AdminPaymentsPage() {
                           View Details
                         </DropdownMenuItem>
                         {payment.status === "Completed" && (
-                          <DropdownMenuItem>Generate Invoice</DropdownMenuItem>
+                          <>
+                            <DropdownMenuItem>Generate Invoice</DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-green-600"
+                              onClick={() => router.push(`/admin-dashboard/payments/${payment.id}`)}
+                            >
+                              Pay to Vendor
+                            </DropdownMenuItem>
+                          </>
                         )}
                         {payment.status === "Pending" && (
                           <DropdownMenuItem>Send Payment Reminder</DropdownMenuItem>
