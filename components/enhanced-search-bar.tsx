@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Search, MapPin, Clock, TrendingUp, Star, Sparkles, Navigation } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,10 @@ export function EnhancedSearchBar() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [userLocation, setUserLocation] = useState<string | null>(null)
   const [isDetectingLocation, setIsDetectingLocation] = useState(false)
+  const [suggestionPosition, setSuggestionPosition] = useState<"top" | "bottom">("bottom")
+  const [suggestionStyle, setSuggestionStyle] = useState<React.CSSProperties>({})
+  const searchBarRef = useRef<HTMLDivElement>(null)
+  const suggestionRef = useRef<HTMLDivElement>(null)
 
   // Demo suggestions data
   const suggestions: SearchSuggestion[] = [
@@ -130,6 +134,70 @@ export function EnhancedSearchBar() {
     "Dwarka Sector 1",
   ]
 
+  // Calculate suggestion position based on search bar position and viewport boundaries
+  const calculateSuggestionPosition = () => {
+    if (searchBarRef.current) {
+      const rect = searchBarRef.current.getBoundingClientRect()
+      const windowHeight = window.innerHeight
+      const windowWidth = window.innerWidth
+      const searchBarBottom = rect.bottom
+      const searchBarTop = rect.top
+      const searchBarLeft = rect.left
+      const searchBarWidth = rect.width
+      
+      // Estimate suggestion box height (adjust based on actual content)
+      const estimatedSuggestionHeight = 400 // Approximate height in pixels
+      const margin = 16 // Margin from search bar
+      
+      // Check if there's enough space below
+      const spaceBelow = windowHeight - searchBarBottom - margin
+      const spaceAbove = searchBarTop - margin
+      
+      let position: "top" | "bottom" = "bottom"
+      let maxHeight = estimatedSuggestionHeight
+      let left = 16
+      let right = 16
+      
+      // Determine vertical position
+      if (spaceBelow >= estimatedSuggestionHeight) {
+        position = "bottom"
+        maxHeight = Math.min(estimatedSuggestionHeight, spaceBelow - margin)
+      } else if (spaceAbove >= estimatedSuggestionHeight) {
+        position = "top"
+        maxHeight = Math.min(estimatedSuggestionHeight, spaceAbove - margin)
+      } else {
+        // If neither space is sufficient, choose the one with more space
+        position = spaceBelow > spaceAbove ? "bottom" : "top"
+        maxHeight = Math.min(estimatedSuggestionHeight, Math.max(spaceBelow, spaceAbove) - margin)
+      }
+      
+      // Handle horizontal positioning for smaller screens
+      const maxSuggestionWidth = Math.min(800, windowWidth - 32)
+      
+      // Ensure the suggestion box doesn't go outside the viewport horizontally
+      if (searchBarLeft < 16) {
+        left = 16
+        right = Math.max(16, windowWidth - (searchBarLeft + searchBarWidth) - 16)
+      } else if (searchBarLeft + searchBarWidth > windowWidth - 16) {
+        right = 16
+        left = Math.max(16, windowWidth - maxSuggestionWidth - 16)
+      } else {
+        // Center the suggestion box with the search bar
+        const centerOffset = (maxSuggestionWidth - searchBarWidth) / 2
+        left = Math.max(16, searchBarLeft - centerOffset)
+        right = Math.max(16, windowWidth - (left + maxSuggestionWidth))
+      }
+      
+      setSuggestionPosition(position)
+      setSuggestionStyle({
+        maxHeight: `${maxHeight}px`,
+        left: `${left}px`,
+        right: `${right}px`,
+        overflowY: maxHeight < estimatedSuggestionHeight ? 'auto' : 'visible'
+      })
+    }
+  }
+
   // Simulate location detection
   useEffect(() => {
     if (navigator.geolocation) {
@@ -144,6 +212,45 @@ export function EnhancedSearchBar() {
       )
     }
   }, [])
+
+  // Recalculate position on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (showSuggestions) {
+        calculateSuggestionPosition()
+      }
+    }
+
+    const handleScroll = () => {
+      if (showSuggestions) {
+        calculateSuggestionPosition()
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    window.addEventListener('scroll', handleScroll)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('scroll', handleScroll)
+    }
+  }, [showSuggestions])
+
+  // Handle clicks outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchBarRef.current && !searchBarRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false)
+      }
+    }
+
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showSuggestions])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -195,8 +302,13 @@ export function EnhancedSearchBar() {
     }, 2000)
   }
 
+  const handleInputFocus = () => {
+    calculateSuggestionPosition()
+    setShowSuggestions(true)
+  }
+
   return (
-    <div className="relative w-full max-w-4xl mx-auto">
+    <div className="relative w-full max-w-4xl mx-auto" ref={searchBarRef}>
       <form onSubmit={handleSearch} className="relative">
         <div className=" flex flex-col lg:flex-row gap-3 bg-white rounded-full shadow-lg border p-2 hover:shadow-xl transition-all duration-300">
           {/* Location Selector */}
@@ -233,7 +345,7 @@ export function EnhancedSearchBar() {
               className="w-full pl-12 pr-4 py-3 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm font-medium bg-transparent placeholder:text-gray-400 rounded-full"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onFocus={() => setShowSuggestions(true)}
+              onFocus={handleInputFocus}
               onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
             />
           </div>
@@ -249,10 +361,23 @@ export function EnhancedSearchBar() {
         </div>
       </form>
 
-      {/* Search Suggestions - Fixed positioning with higher z-index */}
+      {/* Search Suggestions - Fixed positioning with viewport boundaries */}
       {showSuggestions && (
-        <div className=" fixed inset-x-4 top-auto z-[99999] mt-4 max-w-4xl mx-auto">
-          <Card className="shadow-2xl border-0 bg-white rounded-2xl overflow-hidden">
+        <div 
+          ref={suggestionRef}
+          className={`fixed z-[99999] ${
+            suggestionPosition === "top" 
+              ? "bottom-auto" 
+              : "top-auto"
+          }`}
+          style={{
+            ...suggestionStyle,
+            [suggestionPosition === "top" ? "bottom" : "top"]: suggestionPosition === "top" 
+              ? `${searchBarRef.current?.getBoundingClientRect().top - 16}px`
+              : `${searchBarRef.current?.getBoundingClientRect().bottom + 16}px`
+          }}
+        >
+          <Card className="shadow-2xl border-0 bg-white rounded-2xl overflow-hidden w-full max-w-4xl mx-auto">
             <CardContent className="p-6">
               <div className="space-y-6">
                 <div>

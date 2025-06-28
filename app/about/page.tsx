@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Users, Target, Heart, Award, MapPin, Calendar, Star, CheckCircle, ArrowRight } from "lucide-react"
 import Link from "next/link"
+import { Footer } from "@/components/footer"
 
 export default function AboutPage() {
   const stats = [
@@ -245,13 +246,15 @@ export default function AboutPage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10">
+              <Button size="lg" variant="outline" className="border-white text-pink-600">
                 <Link href="/become-vendor">Become a Vendor</Link>
               </Button>
             </div>
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   )
 }

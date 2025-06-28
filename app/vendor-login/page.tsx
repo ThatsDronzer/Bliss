@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { Mail, Lock, AlertCircle, Phone, CheckCircle } from "lucide-react"
+import { Mail, Lock, AlertCircle, Store, Phone, CheckCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-export default function LoginPage() {
+export default function VendorLoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { login } = useAuth()
@@ -39,9 +39,9 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      const result = await login(identifier, password, "user")
+      const result = await login(identifier, password, "vendor")
       if (result.success) {
-        router.push("/")
+        router.push("/vendor-dashboard")
       } else {
         setError(result.message)
       }
@@ -53,7 +53,7 @@ export default function LoginPage() {
   }
 
   const setDemoCredentials = () => {
-    setIdentifier("priya.sharma@example.com")
+    setIdentifier("info@royalweddingpalace.in")
     setPassword("password123")
   }
 
@@ -66,15 +66,15 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 flex items-center justify-center py-12 px-4">
       <div className="w-full max-w-md">
         {/* Header */}
-        <div className="text-center mb-8">
-          
-        </div>
+        {/* <div className="text-center mb-8">
+          <p className="text-gray-600">Sign in to your vendor account</p>
+        </div> */}
 
         <Card className="shadow-2xl border-0">
           <CardHeader className="pb-6">
-            <CardTitle className="text-2xl text-center">Sign In</CardTitle>
+            <CardTitle className="text-2xl text-center">Vendor Sign In</CardTitle>
             <CardDescription className="text-center">
-            Sign in to your account to continue
+            Sign in to your vendor account
             </CardDescription>
           </CardHeader>
 
@@ -87,6 +87,8 @@ export default function LoginPage() {
             )}
 
             
+
+           
 
             {error && (
               <Alert variant="destructive" className="mb-6">
@@ -123,7 +125,7 @@ export default function LoginPage() {
                     className="pl-10"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder={identifierType === "email" ? "your@email.com" : "+91 98765 43210"}
+                    placeholder={identifierType === "email" ? "business@example.com" : "+91 98765 43210"}
                     required
                   />
                 </div>
@@ -176,15 +178,17 @@ export default function LoginPage() {
               </Button>
 
               <p className="text-center text-sm text-gray-500 mt-6">
-                Don't have an account?{" "}
-                <Link href="/signup" className="text-pink-600 hover:underline font-medium">
-                  Sign up
+                Don't have a vendor account?{" "}
+                <Link href="/become-vendor" className="text-pink-600 hover:underline font-medium">
+                  Apply to become a vendor
                 </Link>
               </p>
+
+              
             </form>
           </CardContent>
         </Card>
       </div>
     </div>
   )
-}
+} 

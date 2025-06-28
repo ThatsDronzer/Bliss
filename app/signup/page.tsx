@@ -10,10 +10,7 @@ import {
   Lock,
   AlertCircle,
   User,
-  Store,
   Phone,
-  MapPin,
-  Building,
   Eye,
   EyeOff,
   CheckCircle,
@@ -23,15 +20,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 
 export default function SignUpPage() {
   const router = useRouter()
-  const [userType, setUserType] = useState<"customer" | "vendor">("customer")
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -39,11 +32,6 @@ export default function SignUpPage() {
     phone: "",
     password: "",
     confirmPassword: "",
-    // Vendor specific
-    businessName: "",
-    businessType: "",
-    businessAddress: "",
-    businessDescription: "",
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -66,10 +54,6 @@ export default function SignUpPage() {
 
     if (formData.password.length < 8) {
       return "Password must be at least 8 characters long"
-    }
-
-    if (userType === "vendor" && (!formData.businessName || !formData.businessType)) {
-      return "Please fill in all business information"
     }
 
     if (!acceptTerms) {
@@ -104,19 +88,6 @@ export default function SignUpPage() {
     }
   }
 
-  const businessTypes = [
-    "Wedding Planner",
-    "Photographer",
-    "Caterer",
-    "Venue",
-    "Decorator",
-    "DJ/Music",
-    "Transportation",
-    "Beauty & Makeup",
-    "Florist",
-    "Other",
-  ]
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-purple-50 py-12 px-4">
       <div className="container mx-auto max-w-4xl">
@@ -129,260 +100,183 @@ export default function SignUpPage() {
           <CardHeader className="pb-6">
             <CardTitle className="text-2xl text-center">Create Your Account</CardTitle>
             <CardDescription className="text-center">
-              Choose your account type and fill in your information
+              Fill in your information to create your account
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <Tabs value={userType} onValueChange={(value) => setUserType(value as "customer" | "vendor")}>
-              <TabsList className="grid w-full grid-cols-2 mb-8">
-                <TabsTrigger value="customer" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  <span>Customer</span>
-                </TabsTrigger>
-                <TabsTrigger value="vendor" className="flex items-center gap-2">
-                  <Store className="h-4 w-4" />
-                  <span>Vendor</span>
-                </TabsTrigger>
-              </TabsList>
+            <p className="text-sm text-gray-500 mb-6">
+              Create an account to explore vendors, book services, and manage your events.
+            </p>
 
-              {error && (
-                <Alert variant="destructive" className="mb-6">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+            {error && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Common Fields */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name *</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="firstName"
-                        type="text"
-                        placeholder="John"
-                        className="pl-10"
-                        value={formData.firstName}
-                        onChange={(e) => handleInputChange("firstName", e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="lastName"
-                        type="text"
-                        placeholder="Doe"
-                        className="pl-10"
-                        value={formData.lastName}
-                        onChange={(e) => handleInputChange("lastName", e.target.value)}
-                      />
-                    </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Common Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name *</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="John"
+                      className="pl-10"
+                      value={formData.firstName}
+                      onChange={(e) => handleInputChange("firstName", e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number *</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        placeholder="+91 98765 43210"
-                        className="pl-10"
-                        value={formData.phone}
-                        onChange={(e) => handleInputChange("phone", e.target.value)}
-                        required
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Doe"
+                      className="pl-10"
+                      value={formData.lastName}
+                      onChange={(e) => handleInputChange("lastName", e.target.value)}
+                    />
                   </div>
+                </div>
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="your@email.com"
-                        className="pl-10"
-                        value={formData.email}
-                        onChange={(e) => handleInputChange("email", e.target.value)}
-                      />
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      className="pl-10"
+                      value={formData.phone}
+                      onChange={(e) => handleInputChange("phone", e.target.value)}
+                      required
+                    />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password *</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        className="pl-10 pr-10"
-                        value={formData.password}
-                        onChange={(e) => handleInputChange("password", e.target.value)}
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      className="pl-10"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange("email", e.target.value)}
+                    />
                   </div>
+                </div>
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                      <Input
-                        id="confirmPassword"
-                        type={showConfirmPassword ? "text" : "password"}
-                        placeholder="••••••••"
-                        className="pl-10 pr-10"
-                        value={formData.confirmPassword}
-                        onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                        required
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password *</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="pl-10 pr-10"
+                      value={formData.password}
+                      onChange={(e) => handleInputChange("password", e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
-                {/* Vendor Fields */}
-                {userType === "vendor" && (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="businessName">Business Name *</Label>
-                        <div className="relative">
-                          <Building className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          <Input
-                            id="businessName"
-                            type="text"
-                            placeholder="Your Business Name"
-                            className="pl-10"
-                            value={formData.businessName}
-                            onChange={(e) => handleInputChange("businessName", e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password *</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="pl-10 pr-10"
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="businessType">Business Type *</Label>
-                        <Select
-                          value={formData.businessType}
-                          onValueChange={(value) => handleInputChange("businessType", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select business type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {businessTypes.map((type) => (
-                              <SelectItem key={type} value={type.toLowerCase()}>
-                                {type}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+              <div className="flex items-start space-x-2">
+                <Checkbox id="terms" checked={acceptTerms} onCheckedChange={setAcceptTerms} className="mt-1" />
+                <div className="text-sm">
+                  <Label htmlFor="terms" className="cursor-pointer">
+                    I agree to the{" "}
+                    <Link href="/terms" className="text-pink-600 hover:underline">
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link href="/privacy" className="text-pink-600 hover:underline">
+                      Privacy Policy
+                    </Link>
+                  </Label>
+                </div>
+              </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="businessAddress">Business Address</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input
-                          id="businessAddress"
-                          type="text"
-                          placeholder="Your business address"
-                          className="pl-10"
-                          value={formData.businessAddress}
-                          onChange={(e) => handleInputChange("businessAddress", e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="businessDescription">Business Description</Label>
-                      <Textarea
-                        id="businessDescription"
-                        placeholder="Tell us about your business..."
-                        value={formData.businessDescription}
-                        onChange={(e) => handleInputChange("businessDescription", e.target.value)}
-                        rows={4}
-                      />
-                    </div>
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-pink-600 hover:bg-pink-700 text-white py-3 text-lg font-semibold"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Creating Account...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5" />
+                    Create Account
                   </div>
                 )}
+              </Button>
+            </form>
 
-                <div className="flex items-start space-x-2">
-                  <Checkbox id="terms" checked={acceptTerms} onCheckedChange={setAcceptTerms} className="mt-1" />
-                  <div className="text-sm">
-                    <Label htmlFor="terms" className="cursor-pointer">
-                      I agree to the{" "}
-                      <Link href="/terms" className="text-pink-600 hover:underline">
-                        Terms of Service
-                      </Link>{" "}
-                      and{" "}
-                      <Link href="/privacy" className="text-pink-600 hover:underline">
-                        Privacy Policy
-                      </Link>
-                    </Label>
-                  </div>
-                </div>
-
-                {/* Submit Button */}
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-pink-600 hover:bg-pink-700 text-white py-3 text-lg font-semibold"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Creating Account...
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-5 w-5" />
-                      Create Account
-                    </div>
-                  )}
-                </Button>
-              </form>
-
-              {/* Login Link */}
-              <div className="mt-6 text-center">
-                <p className="text-gray-600">
-                  Already have an account?{" "}
-                  <Link href="/login" className="text-pink-600 hover:underline font-semibold">
-                    Sign in here
-                  </Link>
-                </p>
-              </div>
-            </Tabs>
+            {/* Login Link */}
+            <div className="mt-6 text-center">
+              <p className="text-gray-600">
+                Already have an account?{" "}
+                <Link href="/login" className="text-pink-600 hover:underline font-semibold">
+                  Sign in here
+                </Link>
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

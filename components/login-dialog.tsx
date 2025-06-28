@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Mail, Lock, AlertCircle, User, Store, ShieldCheck } from "lucide-react"
+import { Mail, Lock, AlertCircle, User } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -20,7 +20,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/lib/auth"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const router = useRouter()
@@ -29,7 +28,6 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   const [password, setPassword] = useState("password123")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  const [loginType, setLoginType] = useState<"user" | "vendor" | "admin">("user")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -37,18 +35,11 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     setIsLoading(true)
 
     try {
-      const result = await login(email, password, loginType)
+      const result = await login(email, password, "user")
       if (result.success) {
         onOpenChange(false)
-        // Redirect logic: Only vendors and admins go to dashboard, users stay on homepage
-        if (loginType === "admin") {
-          router.push("/admin-dashboard")
-        } else if (loginType === "vendor") {
-          router.push("/vendor-dashboard")
-        } else {
-          // Users stay on current page or go to homepage
-          router.push("/")
-        }
+        // Users stay on current page or go to homepage
+        router.push("/")
       } else {
         setError(result.message)
       }
@@ -59,16 +50,9 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
     }
   }
 
-  const setDemoCredentials = (type: "user" | "vendor" | "admin") => {
-    if (type === "admin") {
-      setEmail("admin@blissmet.in")
-    } else if (type === "vendor") {
-      setEmail("info@royalweddingpalace.in")
-    } else {
-      setEmail("priya.sharma@example.com")
-    }
+  const setDemoCredentials = () => {
+    setEmail("priya.sharma@example.com")
     setPassword("password123")
-    setLoginType(type)
   }
 
   return (
@@ -81,44 +65,14 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="user" onValueChange={(value) => setLoginType(value as "user" | "vendor" | "admin")}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="user" className="flex items-center gap-2" onClick={() => setDemoCredentials("user")}>
-              <User className="h-4 w-4" />
-              <span>User</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="vendor"
-              className="flex items-center gap-2"
-              onClick={() => setDemoCredentials("vendor")}
-            >
-              <Store className="h-4 w-4" />
-              <span>Vendor</span>
-            </TabsTrigger>
-            <TabsTrigger value="admin" className="flex items-center gap-2" onClick={() => setDemoCredentials("admin")}>
-              <ShieldCheck className="h-4 w-4" />
-              <span>Admin</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex items-center gap-2 mb-4">
+          <User className="h-4 w-4" />
+          <span className="text-sm font-medium">User Login</span>
+        </div>
 
-          <TabsContent value="user">
-            <p className="text-sm text-gray-500 mb-4">
-              Login as a user to explore vendors, book services, and manage your events.
-            </p>
-          </TabsContent>
-
-          <TabsContent value="vendor">
-            <p className="text-sm text-gray-500 mb-4">
-              Login as a vendor to manage your listings, bookings, and business.
-            </p>
-          </TabsContent>
-
-          <TabsContent value="admin">
-            <p className="text-sm text-gray-500 mb-4">
-              Login as an admin to manage the platform, users, vendors, and more.
-            </p>
-          </TabsContent>
-        </Tabs>
+        <p className="text-sm text-gray-500 mb-4">
+          Login to explore vendors, book services, and manage your events.
+        </p>
 
         {error && (
           <Alert variant="destructive">
@@ -136,13 +90,7 @@ export function LoginDialog({ open, onOpenChange }: { open: boolean; onOpenChang
                 <Input
                   id="email"
                   type="email"
-                  placeholder={
-                    loginType === "admin"
-                      ? "admin@example.com"
-                      : loginType === "vendor"
-                        ? "business@example.com"
-                        : "you@example.com"
-                  }
+                  placeholder="you@example.com"
                   className="pl-10"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}

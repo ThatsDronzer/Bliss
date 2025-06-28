@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Footer } from "@/components/footer"
 
 export default function BecomeVendorPage() {
   const router = useRouter()
@@ -519,6 +520,7 @@ export default function BecomeVendorPage() {
           </CardContent>
         </Card>
       </div>
+      <Footer />
     </main>
   )
 }

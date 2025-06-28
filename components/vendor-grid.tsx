@@ -75,20 +75,26 @@ export function VendorGrid({ limit, filters = {}, searchQuery = "", sortOption =
 
     // Filter by event types
     if (filters.eventTypes && filters.eventTypes.length > 0) {
-      result = result.filter((vendor) => vendor.eventTypes?.some((type) => filters.eventTypes?.includes(type)))
+      result = result.filter((vendor) => vendor.eventTypes?.some((type: string) => filters.eventTypes?.includes(type)))
     }
 
     // Sort vendors
     if (sortOption === "price-low") {
       result.sort((a, b) => {
-        const priceA = Number.parseInt(a.price.replace(/[^\d]/g, ""))
-        const priceB = Number.parseInt(b.price.replace(/[^\d]/g, ""))
+        // Extract the first number from price strings with null checks
+        const priceA = a.price && typeof a.price === 'string' ? 
+          (a.price.match(/\d+/) ? parseInt(a.price.match(/\d+/)[0]) : 0) : 0
+        const priceB = b.price && typeof b.price === 'string' ? 
+          (b.price.match(/\d+/) ? parseInt(b.price.match(/\d+/)[0]) : 0) : 0
         return priceA - priceB
       })
     } else if (sortOption === "price-high") {
       result.sort((a, b) => {
-        const priceA = Number.parseInt(a.price.replace(/[^\d]/g, ""))
-        const priceB = Number.parseInt(b.price.replace(/[^\d]/g, ""))
+        // Extract the first number from price strings with null checks
+        const priceA = a.price && typeof a.price === 'string' ? 
+          (a.price.match(/\d+/) ? parseInt(a.price.match(/\d+/)[0]) : 0) : 0
+        const priceB = b.price && typeof b.price === 'string' ? 
+          (b.price.match(/\d+/) ? parseInt(b.price.match(/\d+/)[0]) : 0) : 0
         return priceB - priceA
       })
     } else if (sortOption === "rating") {
@@ -184,7 +190,7 @@ export function VendorGrid({ limit, filters = {}, searchQuery = "", sortOption =
               <span>{vendor.location}</span>
             </div>
             <div className="flex flex-wrap gap-1 mt-3">
-              {vendor.eventTypes?.slice(0, 3).map((type) => (
+              {vendor.eventTypes?.slice(0, 3).map((type: string) => (
                 <span key={type} className="text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded-full">
                   {type}
                 </span>

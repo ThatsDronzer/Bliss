@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Footer } from "@/components/footer"
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -298,6 +299,7 @@ export default function ContactPage() {
           </CardContent>
         </Card>
       </div>
+      <Footer />
     </main>
   )
 }

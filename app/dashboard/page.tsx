@@ -115,7 +115,7 @@ export default function DashboardPage() {
                 <Button 
                   variant="outline" 
                   className="dashboard-button-outline"
-                  onClick={() => router.push("/dashboard/events")}
+                  onClick={() => router.push("/dashboard/bookings")}
                 >
                   View All Events
                 </Button>

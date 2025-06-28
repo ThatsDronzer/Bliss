@@ -48,7 +48,17 @@ export function Header() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
-      router.push(`/vendors?search=${encodeURIComponent(searchQuery)}`)
+      // Check if the search query looks like a service search
+      const serviceKeywords = ['photography', 'catering', 'decoration', 'dj', 'makeup', 'venue', 'music', 'lighting', 'tent', 'furniture', 'planning', 'transport', 'beauty', 'florist', 'entertainment']
+      const isServiceSearch = serviceKeywords.some(keyword => 
+        searchQuery.toLowerCase().includes(keyword)
+      )
+      
+      if (isServiceSearch) {
+        router.push(`/explore-services?service=${encodeURIComponent(searchQuery)}`)
+      } else {
+        router.push(`/vendors?search=${encodeURIComponent(searchQuery)}`)
+      }
     }
   }
 
@@ -75,11 +85,18 @@ export function Header() {
 
             {/* Navigation Links - Now part of left side */}
             <nav className="hidden lg:flex items-center gap-8">
-              <Link
+              {/* <Link
                 href="/vendors"
                 className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors duration-200 relative group"
               >
                 Explore Vendors
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 group-hover:w-full transition-all duration-300"></span>
+              </Link> */}
+              <Link
+                href="/explore-services"
+                className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors duration-200 relative group"
+              >
+                Explore Services
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 group-hover:w-full transition-all duration-300"></span>
               </Link>
               <Link
@@ -142,7 +159,7 @@ export function Header() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => router.push("/become-vendor")}
+                      onClick={() => router.push("/vendor-login")}
                       className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
                     >
                       Become a Vendor
@@ -176,6 +193,14 @@ export function Header() {
                   className="bg-pink-600 hover:bg-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                 >
                   Sign Up
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => router.push("/vendor-login")}
+                  className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
+                >
+                  Vendor Login
                 </Button>
               </div>
             )}
@@ -214,8 +239,11 @@ export function Header() {
                   )}
 
                   <div className="space-y-4">
-                    <Link href="/vendors" className="block text-base font-medium hover:text-pink-600 transition-colors">
+                    {/* <Link href="/vendors" className="block text-base font-medium hover:text-pink-600 transition-colors">
                       Explore Vendors
+                    </Link> */}
+                    <Link href="/explore-services" className="block text-base font-medium hover:text-pink-600 transition-colors">
+                      Explore Services
                     </Link>
                     <Link href="/home-service" className="block text-base font-medium hover:text-pink-600 transition-colors">
                       Home Services
@@ -223,6 +251,11 @@ export function Header() {
                     <Link href="/about" className="block text-base font-medium hover:text-pink-600 transition-colors">
                       About Us
                     </Link>
+                    {!isAuthenticated && (
+                      <Link href="/vendor-login" className="block text-base font-medium hover:text-pink-600 transition-colors">
+                        Vendor Login
+                      </Link>
+                    )}
                   </div>
                 </div>
               </SheetContent>

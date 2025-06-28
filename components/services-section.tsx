@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Building, Camera, Utensils, Palette, Music, Home } from "lucide-react"
+import Link from "next/link"
 
 export function ServicesSection() {
   const services = [
@@ -12,6 +13,7 @@ export function ServicesSection() {
       description:
         "Find and book the perfect venue for your event from our extensive collection of banquet halls, hotels, and outdoor spaces.",
       features: ["Banquet Halls", "Hotels", "Outdoor Venues", "Community Centers"],
+      link: "/vendors?category=Venue",
     },
     {
       icon: Camera,
@@ -19,6 +21,7 @@ export function ServicesSection() {
       description:
         "Capture your precious moments with professional photographers and videographers who specialize in event coverage.",
       features: ["Event Photography", "Videography", "Pre-event Shoots", "Drone Coverage"],
+      link: "/vendors?category=Photography",
     },
     {
       icon: Utensils,
@@ -26,6 +29,7 @@ export function ServicesSection() {
       description:
         "Delight your guests with delicious food from our network of experienced caterers offering diverse cuisines.",
       features: ["Multi-cuisine", "Live Counters", "Dessert Stations", "Custom Menus"],
+      link: "/vendors?category=Catering",
     },
     {
       icon: Palette,
@@ -33,6 +37,7 @@ export function ServicesSection() {
       description:
         "Transform your venue with stunning decorations and themes that match your vision and style preferences.",
       features: ["Theme Decoration", "Floral Arrangements", "Lighting", "Stage Setup"],
+      link: "/vendors?category=Decoration",
     },
     {
       icon: Music,
@@ -40,6 +45,7 @@ export function ServicesSection() {
       description:
         "Keep your guests entertained with professional DJs, live bands, and performers for all types of events.",
       features: ["DJ Services", "Live Bands", "Performers", "Sound Systems"],
+      link: "/vendors?category=DJ",
     },
     {
       icon: Home,
@@ -47,6 +53,7 @@ export function ServicesSection() {
       description:
         "Bring the celebration to your home with our specialized home event services and intimate gathering packages.",
       features: ["Home Decoration", "Small Gatherings", "Intimate Parties", "Custom Packages"],
+      link: "/home-service",
     },
   ]
 
@@ -81,9 +88,11 @@ export function ServicesSection() {
                   ))}
                 </ul>
 
-                <Button variant="outline" className="w-full">
-                  Explore {service.title}
-                </Button>
+                <Link href={service.link}>
+                  <Button variant="outline" className="w-full">
+                    Explore {service.title}
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           ))}

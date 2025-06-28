@@ -14,6 +14,7 @@ import {
   Settings,
   PlusCircle,
   LogOut,
+  CheckCircle,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -47,6 +48,11 @@ const navItems = [
     title: "Reviews",
     href: "/vendor-dashboard/reviews",
     icon: <Star className="w-5 h-5" />,
+  },
+  {
+    title: "Verification",
+    href: "/vendor-dashboard/verification",
+    icon: <CheckCircle className="w-5 h-5" />,
   },
   {
     title: "Profile",
@@ -86,10 +92,12 @@ export function VendorDashboardSidebar() {
         ))}
 
         <div className="mt-4 pt-4 border-t">
-          <Button className="w-full justify-start" variant="outline">
-            <PlusCircle className="w-5 h-5 mr-2" />
-            Add New Listing
-          </Button>
+          <Link href="/vendor-dashboard/listings/new">
+            <Button className="w-full justify-start" variant="outline">
+              <PlusCircle className="w-5 h-5 mr-2" />
+              Add New Listing
+            </Button>
+          </Link>
         </div>
       </div>
       <div className="mt-auto p-4 border-t">

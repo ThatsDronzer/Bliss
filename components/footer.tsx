@@ -69,6 +69,14 @@ export function Footer() {
                   Entertainment
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/home-service"
+                  className="text-gray-300 hover:text-pink-400 transition-colors"
+                >
+                  Home Service
+                </Link>
+              </li>
             </ul>
           </div>
 
