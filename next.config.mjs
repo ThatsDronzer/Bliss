@@ -12,7 +12,24 @@ try {
 }
 
 /** @type {import('next').NextConfig} */
+
 const nextConfig = {
+  reactStrictMode: true,
+  experimental: {
+    appDir: true,
+  },
+  rewrites: async () => [
+    {
+      source: "/sign-in",
+      destination: "/sign-in/[[...index]]",
+    },
+    {
+      source: "/sign-up",
+      destination: "/sign-up/[[...index]]",
+    },
+  ],
+
+
   eslint: {
     ignoreDuringBuilds: true,
   },
