@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { CoinDisplay } from "@/components/ui/coin-display"
 import { CoinService } from "@/lib/coin-service"
+import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
 
 export function Header() {
   const router = useRouter()
@@ -63,11 +64,13 @@ export function Header() {
   }
 
   const handleSignIn = () => {
-    router.push("/login")
+    // router.push("/login")
+     router.push("/user/sign-in")
   }
 
   const handleSignUp = () => {
-    router.push("/signup")
+    // router.push("/signup")
+    router.push("/user/sign-up")
   }
 
   return (
@@ -115,6 +118,12 @@ export function Header() {
               </Link>
             </nav>
           </div>
+            
+            {/* -------------------------------- new thing added here---------------------- */}
+            <SignedIn>
+              <UserButton />
+            </SignedIn>
+            {/* -------------------------------- end here---------------------- */}
 
           {/* Right Side - User Actions */}
           <div className="flex items-center gap-3">
@@ -166,7 +175,7 @@ export function Header() {
                     </Button>
                   )}
 
-                  <Button
+                  {/* <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleLogout}
@@ -174,7 +183,7 @@ export function Header() {
                   >
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
-                  </Button>
+                  </Button> */}
                 </div>
               </>
             ) : (

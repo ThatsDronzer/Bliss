@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { ChatLayout } from "@/components/layouts/chat-layout"
 import { Header } from "@/components/header"
 import { Toaster } from "@/components/ui/toaster"
+import { ClerkProvider } from '@clerk/nextjs'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -18,6 +19,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
+    <ClerkProvider>
     <html lang="en">
       <body className={inter.className}>
         <ChatLayout>
@@ -27,5 +29,6 @@ export default function RootLayout({
         </ChatLayout>
       </body>
     </html>
+   </ClerkProvider>
   )
 }
