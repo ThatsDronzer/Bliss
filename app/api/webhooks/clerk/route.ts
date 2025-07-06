@@ -8,9 +8,10 @@ interface ClerkUserCreatedEvent {
   type: "user.created";
   data: {
     id: string;
-    username: string;
+    first_name: string;
+    last_name: string;
     email_addresses: { email_address: string }[];
-    phone_no : number
+    // phone_no : number;
   };
 }
 
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
   const eventType = evt.type;
 
   if (eventType === "user.created") {
-    const { id, email_addresses, username,phone_no } = evt.data;
+    const { id, email_addresses, first_name,last_name } = evt.data;
 
     await connectDB();
 
@@ -48,9 +49,9 @@ export async function POST(req: Request) {
     if (!userExists) {
       await User.create({
         clerkId: id,
-        name: username,
+        name: `${first_name} ${last_name}`,
         email: email_addresses[0].email_address,
-        phone : phone_no,
+        // phone : phone_no,
       });
     }
     

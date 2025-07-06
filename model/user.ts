@@ -36,21 +36,24 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: false,
     },
-    role: {
-      type: String,
-      enum: ['user', 'vendor', 'admin'],
-      default: 'user',
-    },
+    // role: {
+    //   type: String,
+    //   enum: ['user', 'vendor', 'admin'],
+    //   default: 'user',
+    // },
     coins: {
       type: Number,
       default: 0,
     },
     referralCode: {
       type: String,
-      unique: true,
+      // unique: true,
+      default:"NoT",
+
     },
     referredBy: {
       type: String,
+      default: "Nada",
     },
     userVerified: {
       type: Boolean,
@@ -60,5 +63,5 @@ const userSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-const User = models?.User || model<IUser>('User', userSchema);
+const User = mongoose.models?.User || model<IUser>('User', userSchema);
 export default User;
