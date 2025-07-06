@@ -3,9 +3,10 @@ import { Webhook } from 'svix';
 import { NextResponse } from 'next/server';
 import connectDB from "@/lib/config/db"
 import User from '@/model/user';
+import { log } from 'console';
 
 interface ClerkUserCreatedEvent {
-  type: "user.created";
+  type: "user.created" | "user.deleted" ;
   data: {
     id: string;
     first_name: string;
@@ -26,7 +27,6 @@ export async function POST(req: Request) {
   const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
 
   let evt:ClerkUserCreatedEvent;
-  console.log("Webhook triggered by Clerk:", payload);
 
   try {
      evt = wh.verify(JSON.stringify(payload), {
@@ -55,6 +55,11 @@ export async function POST(req: Request) {
       });
     }
     
+  }
+
+  if (eventType === "user.deleted") {
+    const { id } = evt.data;
+    await User.findOneAndDelete({ clerkId: id });
   }
 
   return NextResponse.json({ message: "Webhook received!" });
