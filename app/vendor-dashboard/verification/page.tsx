@@ -194,30 +194,40 @@ export default function VendorVerificationPage() {
     setCurrentStep(currentStep - 1)
   }
 
-  const handleSubmitVerification = async () => {
-    setIsLoading(true)
+const handleSubmitVerification = async () => {
+  setIsLoading(true)
 
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+  try {
+    const response = await fetch("/api/vendor-verification", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(verificationData),
+    })
 
+    const result = await response.json()
+
+    if (result.success) {
       toast({
         title: "Verification Submitted",
         description: "Your verification documents have been submitted successfully. We'll review them within 3-5 business days.",
       })
-
-      // Reset form or redirect
       router.push("/vendor-dashboard")
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "An error occurred while submitting verification. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
+    } else {
+      throw new Error(result.message)
     }
+  } catch (err) {
+    toast({
+      title: "Error",
+      description: "An error occurred while submitting verification. Please try again.",
+      variant: "destructive"
+    })
+  } finally {
+    setIsLoading(false)
   }
+}
+
 
   const getStepStatus = (step: number) => {
     if (currentStep > step) return "completed"
