@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import connectDB from "@/lib/config/db"
-import VendorVerification from "@/model/VendorVerification"
+import VendorVerification from "@/model/vendor"
 
 //for the vendor verification data
 
