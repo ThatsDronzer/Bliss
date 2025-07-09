@@ -14,13 +14,14 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { CoinDisplay } from "@/components/ui/coin-display"
 import { CoinService } from "@/lib/coin-service"
-import { SignedIn, SignedOut, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
+import { SignedIn, SignedOut, SignInButton, SignUpButton, useClerk, UserButton } from "@clerk/nextjs"
 
 export function Header() {
   const router = useRouter()
   const { user, isAuthenticated, isVendor, isAdmin, logout } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
   const [userCoins, setUserCoins] = useState(0)
+   const { signOut } = useClerk();
 
   // Demo cart items count
   const cartItemsCount = 3
@@ -46,6 +47,23 @@ export function Header() {
     return "/dashboard"
   }
 
+  const handleBecomeVendor = async () => {
+    await signOut(); // logs out current user
+    router.push("/sign-up?role=vendor"); // redirect to vendor login
+  };
+
+  const handleSignIn = async () => {
+    // router.push("/login")
+    await signOut();
+     router.push("/sign-in?role=user")
+  }
+
+  const handleSignUp = async () => {
+     await signOut();
+    // router.push("/signup")
+    router.push("/sign-up?role=user")
+  }
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
     if (searchQuery.trim()) {
@@ -63,15 +81,6 @@ export function Header() {
     }
   }
 
-  const handleSignIn = () => {
-    // router.push("/login")
-     router.push("/user/sign-in")
-  }
-
-  const handleSignUp = () => {
-    // router.push("/signup")
-    router.push("/user/sign-up")
-  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-xl">
@@ -188,6 +197,7 @@ export function Header() {
               </>
             ) : (
               <div className="hidden lg:flex items-center gap-3">
+                <SignedOut>
                 <Button
                   variant="outline"
                   size="sm"
@@ -203,14 +213,16 @@ export function Header() {
                 >
                   Sign Up
                 </Button>
+                </SignedOut>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => router.push("/vendor-login")}
+                  onClick={handleBecomeVendor}
                   className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
                 >
                   Vendor Login
                 </Button>
+
               </div>
             )}
 
