@@ -20,7 +20,9 @@ export interface IVendor extends Document {
   ownerEmail: string;
   ownerImage: {
     // data: Buffer;
-    // contentType: string;
+    // contentType: string;images: {
+    url: string;
+
     
   };
 }
@@ -80,9 +82,11 @@ const vendorSchema = new Schema<IVendor>({
   ownerImage: {
     // data: Buffer,
     // contentType: String,
-    url:"https://www.emamiltd.in/wp-content/themes/emami/images/Fair-and-Handsome02-mob-new.jpg"
+    // url:"https://www.emamiltd.in/wp-content/themes/emami/images/Fair-and-Handsome02-mob-new.jpg"
+
+     url: { type: String, required: true }
   },
 });
 
-const Vendor = model<IVendor>('Vendor', vendorSchema);
+const Vendor = mongoose.models.Vendor || model<IVendor>('Vendor', vendorSchema);
 export default Vendor;

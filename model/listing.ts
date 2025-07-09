@@ -41,12 +41,16 @@ const listingSchema = new Schema<IListing>(
       //   url: { type: String, required: true },
       //   filename: { type: String, required: true },
       // },
-      {
-        url:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZXZlbnR8ZW58MHx8MHx8fDA%3D"
+      // {
+      //   url:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZXZlbnR8ZW58MHx8MHx8fDA%3D"
+      // },
+      // {
+      //   url:"https://images.pexels.com/photos/2747449/pexels-photo-2747449.jpeg?cs=srgb&dl=pexels-wolfgang-1002140-2747449.jpg&fm=jpg"
+      // }
+       {
+        url: { type: String, required: true }, // Explicitly define the type as String
+        // filename: { type: String, required: true }, // Uncomment this if you intend to use filename
       },
-      {
-        url:"https://images.pexels.com/photos/2747449/pexels-photo-2747449.jpeg?cs=srgb&dl=pexels-wolfgang-1002140-2747449.jpg&fm=jpg"
-      }
     ],
 
     isActive: {
@@ -80,5 +84,5 @@ const listingSchema = new Schema<IListing>(
   { timestamps: true }
 );
 
-const Listing = model<IListing>('Service', listingSchema);
+const Listing = mongoose.models.Service || model<IListing>('Service', listingSchema);
 export default Listing;
