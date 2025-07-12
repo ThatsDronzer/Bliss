@@ -20,6 +20,26 @@ export default function RoleHandler() {
           },
         });
 
+        // Create user in MongoDB
+        try {
+          const response = await fetch('/api/user/create', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ role }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log('User created in MongoDB:', result);
+          } else {
+            console.error('Failed to create user in MongoDB');
+          }
+        } catch (error) {
+          console.error('Error creating user:', error);
+        }
+
         router.push("/");
       }
     };
