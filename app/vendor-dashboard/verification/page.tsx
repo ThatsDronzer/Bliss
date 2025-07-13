@@ -18,8 +18,9 @@ import { toast } from "@/components/ui/use-toast"
 
 export default function VendorVerificationPage() {
   const router = useRouter()
-  const { isAuthenticated, isVendor } = useAuth()
+  const { isSignedIn, isLoaded } = useAuth()
   const { user } = useUser()
+  const userRole = user?.unsafeMetadata?.role as string || "user"
   const [isLoading, setIsLoading] = useState(false)
   const [verificationData, setVerificationData] = useState({
     // Business Information
@@ -81,14 +82,16 @@ export default function VendorVerificationPage() {
   const [newCertification, setNewCertification] = useState("")
   const [newQualityStandard, setNewQualityStandard] = useState("")
 
-  // Redirect if not authenticated as vendor
+  // Redirect if not authenticated or not a vendor
   useEffect(() => {
-    if (!isAuthenticated || !isVendor) {
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in?role=vendor")
+    } else if (isLoaded && isSignedIn && userRole !== "vendor") {
       router.push("/")
     }
-  }, [isAuthenticated, isVendor, router])
+  }, [isLoaded, isSignedIn, userRole, router])
 
-  if (!isAuthenticated || !isVendor || !user) {
+  if (!isLoaded || !isSignedIn || userRole !== "vendor" || !user) {
     return null
   }
 

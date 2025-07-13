@@ -15,18 +15,22 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function VendorMessagesPage() {
   const router = useRouter()
-  const { isAuthenticated, isVendor, messages, markMessageAsRead, sendMessage } = useAuth()
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
+  const userRole = user?.unsafeMetadata?.role as string || "user"
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedConversation, setSelectedConversation] = useState<any>(null)
   const [newMessage, setNewMessage] = useState("")
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Redirect if not authenticated as vendor
+  // Redirect if not authenticated or not a vendor
   useEffect(() => {
-    if (!isAuthenticated || !isVendor) {
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in?role=vendor")
+    } else if (isLoaded && isSignedIn && userRole !== "vendor") {
       router.push("/")
     }
-  }, [isAuthenticated, isVendor, router])
+  }, [isLoaded, isSignedIn, userRole, router])
 
   // Scroll to bottom of messages when conversation changes or new message is sent
   useEffect(() => {
@@ -35,7 +39,7 @@ export default function VendorMessagesPage() {
     }
   }, [selectedConversation, messages])
 
-  if (!isAuthenticated || !isVendor) {
+  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null
   }
 

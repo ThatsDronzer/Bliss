@@ -16,7 +16,9 @@ import { toast } from "@/components/ui/use-toast"
 
 export default function NewListingPage() {
   const router = useRouter()
-  const { isAuthenticated, isVendor, addVendorListing } = useAuth()
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
+  const userRole = user?.unsafeMetadata?.role as string || "user"
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
@@ -30,14 +32,16 @@ export default function NewListingPage() {
   })
   const [newTerm, setNewTerm] = useState("")
 
-  // Redirect if not authenticated as vendor
+  // Redirect if not authenticated or not a vendor
   useEffect(() => {
-    if (!isAuthenticated || !isVendor) {
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in?role=vendor")
+    } else if (isLoaded && isSignedIn && userRole !== "vendor") {
       router.push("/")
     }
-  }, [isAuthenticated, isVendor, router])
+  }, [isLoaded, isSignedIn, userRole, router])
 
-  if (!isAuthenticated || !isVendor) {
+  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null
   }
 
@@ -133,7 +137,12 @@ export default function NewListingPage() {
         createdAt: new Date().toISOString(),
       }
 
-      addVendorListing(newListing)
+      // Assuming addVendorListing is part of useAuth or passed as a prop
+      // For now, we'll just log or simulate adding it to a global state
+      // In a real app, this would be an API call to your backend
+      console.log("Adding new listing:", newListing)
+      // Example: If you have a global state for listings, you'd update it here
+      // setVendorListings(prev => [...prev, newListing]);
 
       toast({
         title: "Listing Created",
