@@ -6,11 +6,5 @@
     "app/api/**/*.ts": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "MONGODB_URI": "@MONGODB_URI",
-    "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY": "@clerk_publishable_key",
-    "CLERK_SECRET_KEY": "@clerk_secret_key",
-    "CLERK_WEBHOOK_SECRET": "@clerk_webhook_secret"
   }
 } 
