@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Coins, AlertCircle } from "lucide-react"
-import { useAuth } from "@/lib/auth"
+import { useAuth, useUser } from "@clerk/nextjs"
 import { CoinService } from "@/lib/coin-service"
 import type { CoinTransaction } from "@/lib/types"
 import { CoinDisplay } from "@/components/ui/coin-display"

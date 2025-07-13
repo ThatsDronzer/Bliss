@@ -13,88 +13,102 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from 'date-fns';
+
+interface Service {
+  id: number;
+  name: string;
+  price: number;
+  description: string;
+}
 
 interface ServiceBookingProps {
-  selectedServices: string[];
-  selectedPackage: {
-    id: string;
-    customizations?: {
-      options: Array<{
-        id: string;
-        name: string;
-        value: string;
-        included: boolean;
-      }>;
-      additionalRequirements: string;
-    };
-  } | null;
+  selectedServices: Service[];
   onClose: () => void;
 }
 
-export function ServiceBooking({ selectedServices, selectedPackage, onClose }: ServiceBookingProps) {
+export function ServiceBooking({ selectedServices, onClose }: ServiceBookingProps) {
+  const [step, setStep] = useState(1);
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [time, setTime] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    date: '',
-    time: '',
-    location: '',
     specialRequests: ''
   });
+  const [confirmed, setConfirmed] = useState(false);
+
+  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleNext = () => setStep((s) => s + 1);
+  const handleBack = () => setStep((s) => s - 1);
+
+  const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle booking submission
-    console.log('Booking submitted:', {
-      formData,
-      selectedServices,
-      selectedPackage
-    });
-    onClose();
+    setConfirmed(true);
+    setStep(4);
   };
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Book Services</DialogTitle>
           <DialogDescription>
-            Fill in your details to complete the booking
+            {step === 1 && 'Select your event date and time.'}
+            {step === 2 && 'Enter your contact information.'}
+            {step === 3 && 'Review and confirm your booking.'}
+            {step === 4 && 'Booking Confirmed!'}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {selectedPackage && (
-            <div className="space-y-4">
-              <h3 className="font-semibold">Selected Package Details</h3>
-              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
-                {selectedPackage.customizations?.options
-                  .filter(option => option.included)
-                  .map(option => (
-                    <div key={option.id} className="flex justify-between text-sm">
-                      <span className="text-gray-600">{option.name}</span>
-                      <span className="font-medium">{option.value}</span>
-                    </div>
-                  ))
-                }
-                {selectedPackage.customizations?.additionalRequirements && (
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium mb-2">Additional Requirements:</h4>
-                    <p className="text-sm text-gray-600">
-                      {selectedPackage.customizations.additionalRequirements}
-                    </p>
-                  </div>
-                )}
-              </div>
+        {/* Step 1: Date & Time Picker */}
+        {step === 1 && (
+          <div className="space-y-6">
+            <div>
+              <Label className="mb-2 block">Event Date</Label>
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                fromDate={new Date()}
+                className="rounded-lg border"
+              />
             </div>
-          )}
+            <div>
+              <Label htmlFor="time" className="mb-2 block">Event Time</Label>
+              <Input
+                id="time"
+                name="time"
+                type="time"
+                value={time}
+                onChange={e => setTime(e.target.value)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button
+                onClick={handleNext}
+                disabled={!date || !time}
+                className="bg-pink-600 hover:bg-pink-700 text-white"
+              >
+                Next
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Step 2: User Info */}
+        {step === 2 && (
+          <form onSubmit={e => { e.preventDefault(); handleNext(); }} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <Input
@@ -128,60 +142,67 @@ export function ServiceBooking({ selectedServices, selectedPackage, onClose }: S
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="date">Event Date</Label>
-              <Input
-                id="date"
-                name="date"
-                type="date"
-                value={formData.date}
+              <Label htmlFor="specialRequests">Special Requests</Label>
+              <Textarea
+                id="specialRequests"
+                name="specialRequests"
+                value={formData.specialRequests}
                 onChange={handleInputChange}
-                required
+                placeholder="Any special requests or additional information..."
+                className="min-h-[80px]"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="time">Event Time</Label>
-              <Input
-                id="time"
-                name="time"
-                type="time"
-                value={formData.time}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="location">Event Location</Label>
-              <Input
-                id="location"
-                name="location"
-                value={formData.location}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-          </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
+              <Button type="submit" className="bg-pink-600 hover:bg-pink-700 text-white">Next</Button>
+            </DialogFooter>
+          </form>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="specialRequests">Special Requests</Label>
-            <Textarea
-              id="specialRequests"
-              name="specialRequests"
-              value={formData.specialRequests}
-              onChange={handleInputChange}
-              placeholder="Any special requests or additional information..."
-              className="min-h-[100px]"
-            />
-          </div>
+        {/* Step 3: Review & Confirm */}
+        {step === 3 && (
+          <form onSubmit={handleConfirm} className="space-y-6">
+            <div className="space-y-2">
+              <h3 className="font-semibold text-lg mb-2">Booking Summary</h3>
+              <ul className="mb-2">
+                {selectedServices.map((s) => (
+                  <li key={s.id} className="flex justify-between text-sm py-1">
+                    <span>{s.name}</span>
+                    <span className="font-medium">₹{s.price}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="flex justify-between font-bold text-base border-t pt-2">
+                <span>Total</span>
+                <span>₹{totalPrice}</span>
+              </div>
+            </div>
+            <div className="space-y-1 text-sm text-gray-700">
+              <div><span className="font-medium">Date:</span> {date ? format(date, 'PPP') : '-'}</div>
+              <div><span className="font-medium">Time:</span> {time || '-'}</div>
+              <div><span className="font-medium">Name:</span> {formData.name}</div>
+              <div><span className="font-medium">Email:</span> {formData.email}</div>
+              <div><span className="font-medium">Phone:</span> {formData.phone}</div>
+              {formData.specialRequests && <div><span className="font-medium">Special Requests:</span> {formData.specialRequests}</div>}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
+              <Button type="submit" className="bg-pink-600 hover:bg-pink-700 text-white">Confirm Booking</Button>
+            </DialogFooter>
+          </form>
+        )}
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" className="bg-pink-600 hover:bg-pink-700">
-              Confirm Booking
-            </Button>
-          </DialogFooter>
-        </form>
+        {/* Step 4: Confirmation */}
+        {step === 4 && confirmed && (
+          <div className="flex flex-col items-center justify-center py-10">
+            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mb-4">
+              <svg className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <h3 className="text-2xl font-bold mb-2 text-green-700">Booking Confirmed!</h3>
+            <p className="text-gray-700 mb-6 text-center">Thank you for booking with us. You will receive a confirmation email shortly.</p>
+            <Button onClick={onClose} className="bg-pink-600 hover:bg-pink-700 text-white">Close</Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

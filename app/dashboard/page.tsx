@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth, useUser } from "@clerk/nextjs"
 import Image from "next/image"
 import { BookMarked, Heart, MessageSquare, TrendingUp, Star, Gift, Store, Calendar, MapPin, Users, BarChart } from "lucide-react"
 
-import { useAuth } from "@/lib/auth"
 import { StatsCard } from "@/components/dashboard/stats-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,18 +14,63 @@ import { Progress } from "@/components/ui/progress"
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, isAuthenticated, bookings, favorites, messages } = useAuth()
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
+  const [isLoading, setIsLoading] = useState(true)
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isLoaded && !isSignedIn) {
       router.push("/")
+    } else if (isLoaded && isSignedIn) {
+      setIsLoading(false)
     }
-  }, [isAuthenticated, router])
+  }, [isSignedIn, isLoaded, router])
 
-  if (!isAuthenticated || !user) {
+  // Show loading while checking authentication
+  if (!isLoaded || isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show nothing if not authenticated (will redirect)
+  if (!isSignedIn || !user) {
     return null
   }
+
+  // Demo data for the dashboard
+  const bookings = [
+    {
+      id: "booking-1",
+      vendorName: "Royal Palace Venue",
+      vendorCategory: "Venue",
+      bookingDate: "2024-06-15",
+      amount: "250000",
+      status: "Confirmed",
+    },
+    {
+      id: "booking-2",
+      vendorName: "Capture Moments Photography",
+      vendorCategory: "Photography",
+      bookingDate: "2024-06-15",
+      amount: "75000",
+      status: "Pending",
+    },
+  ]
+
+  const messages = [
+    { id: "msg-1", unread: true },
+    { id: "msg-2", unread: false },
+    { id: "msg-3", unread: true },
+  ]
 
   // Get recent bookings
   const recentBookings = bookings.slice(0, 3)
@@ -60,7 +105,7 @@ export default function DashboardPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.name}</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user.firstName || user.username || 'User'}</h1>
           <p className="text-gray-500 mt-1">Here's what's happening with your wedding planning</p>
         </div>
       </div>

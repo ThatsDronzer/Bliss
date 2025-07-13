@@ -18,7 +18,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/lib/auth"
+import { UserButton } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 
 const navItems = [
@@ -56,11 +56,9 @@ const navItems = [
 
 export function DashboardSidebar() {
   const pathname = usePathname()
-  const { logout } = useAuth()
   const router = useRouter()
 
   const handleSignOut = () => {
-    logout()
     router.push("/")
   }
 
@@ -80,10 +78,7 @@ export function DashboardSidebar() {
         ))}
       </div>
       <div className="mt-auto p-4 border-t">
-        <Button variant="destructive" className="w-full" onClick={handleSignOut}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign Out
-        </Button>
+        <UserButton afterSignOutUrl="/" />
       </div>
     </div>
   )

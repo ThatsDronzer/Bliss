@@ -1,4 +1,4 @@
-import { type Vendor } from "./types"
+import { type Vendor } from "./types/index"
 
 // Vendor data
 export const vendors: Vendor[] = [
@@ -258,6 +258,68 @@ export const vendors: Vendor[] = [
       { name: "Premium DJ (6 hours)", price: "₹35,000", details: "1 DJ + premium equipment" },
       { name: "DJ + Live Band", price: "₹60,000", details: "Complete entertainment package" },
     ],
+  },
+  {
+    id: "v2",
+    name: "Demo Vendor V2",
+    image: "/placeholder.svg?height=200&width=300&text=Vendor+V2",
+    coverImage: "/placeholder.svg?height=400&width=1200&text=Vendor+V2+Cover",
+    category: "Catering",
+    location: "Pune",
+    rating: 4.5,
+    reviewsCount: 10,
+    experience: "5 years",
+    description: "Demo vendor for V2. Delicious catering for all occasions.",
+    phone: "+91 90000 00000",
+    email: "demo-v2@vendor.com",
+    featured: false,
+    verified: true,
+    topServices: ["Buffet", "Live Counter", "Drinks"],
+    services: [
+      { id: "s1", name: "Buffet", price: 10000, description: "Veg & Non-Veg options", category: "Food" },
+      { id: "s2", name: "Live Counter", price: 7000, description: "Pasta, Chaat, etc.", category: "Food" },
+      { id: "s3", name: "Drinks", price: 3000, description: "Soft drinks and mocktails", category: "Beverage" }
+    ],
+    items: [
+      { name: "Buffet", price: "₹10,000", details: "Veg & Non-Veg options" },
+      { name: "Live Counter", price: "₹7,000", details: "Pasta, Chaat, etc." },
+      { name: "Drinks", price: "₹3,000", details: "Soft drinks and mocktails" }
+    ],
+    packages: [
+      {
+        id: 1,
+        name: "Full Catering Package",
+        price: 18000,
+        description: "Buffet + Live Counter + Drinks",
+        services: ["s1", "s2", "s3"],
+        savings: 2000
+      }
+    ],
+    availability: [
+      {
+        date: "2024-08-01",
+        slots: [
+          { time: "Morning", available: true },
+          { time: "Evening", available: true }
+        ]
+      }
+    ],
+    refundPolicy: {
+      description: "Full refund if cancelled 7 days before event.",
+      cancellationTerms: [
+        { daysBeforeEvent: 7, refundPercentage: 100 },
+        { daysBeforeEvent: 3, refundPercentage: 50 }
+      ]
+    },
+    reviews: [
+      {
+        id: "r1",
+        name: "Test User",
+        rating: 5,
+        comment: "Great food and service!",
+        date: "2024-07-01"
+      }
+    ]
   },
 ]
 

@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { vendors } from "@/lib/data"
-import { useAuth } from "@/lib/auth"
+import { useAuth, useUser } from "@clerk/nextjs"
 import { useToast } from "@/components/ui/use-toast"
 
 interface VendorGridProps {

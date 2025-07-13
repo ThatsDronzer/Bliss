@@ -2,223 +2,338 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { Search, Plus, Edit, Trash2, Eye, EyeOff } from "lucide-react"
+import { useAuth, useUser } from "@clerk/nextjs"
+import { Plus, Edit, Eye, Trash2, Star, MapPin, Calendar, DollarSign } from "lucide-react"
 
-import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { toast } from "@/components/ui/use-toast"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Separator } from "@/components/ui/separator"
 
 export default function VendorListingsPage() {
   const router = useRouter()
-  const { isAuthenticated, isVendor, vendorListings, updateVendorListing, deleteVendorListing } = useAuth()
-  const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [selectedListing, setSelectedListing] = useState<string | null>(null)
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
+  const [activeTab, setActiveTab] = useState("active")
 
-  // Redirect if not authenticated as vendor
+  // Get user role from Clerk metadata
+  const userRole = user?.unsafeMetadata?.role as string || "user"
+
+  // Redirect if not authenticated or not a vendor
   useEffect(() => {
-    if (!isAuthenticated || !isVendor) {
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in?role=vendor")
+    } else if (isLoaded && isSignedIn && userRole !== "vendor") {
       router.push("/")
     }
-  }, [isAuthenticated, isVendor, router])
+  }, [isLoaded, isSignedIn, userRole, router])
 
-  if (!isAuthenticated || !isVendor) {
+  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null
   }
 
-  // Filter listings based on search and status
-  const filteredListings = vendorListings.filter((listing) => {
-    const matchesSearch =
-      listing.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      listing.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      listing.category.toLowerCase().includes(searchQuery.toLowerCase())
-
-    const matchesStatus = statusFilter === "all" || listing.status.toLowerCase() === statusFilter.toLowerCase()
-
-    return matchesSearch && matchesStatus
-  })
-
-  const handleToggleStatus = (listingId: string, currentStatus: string) => {
-    const newStatus = currentStatus === "Active" ? "Inactive" : "Active"
-    updateVendorListing(listingId, { status: newStatus })
-
-    toast({
-      title: `Listing ${newStatus}`,
-      description: `The listing has been ${newStatus === "Active" ? "activated" : "deactivated"}.`,
-    })
+  // Mock listings data - in a real app, you'd fetch this from your database
+  const listings = {
+    active: [
+      {
+        id: "1",
+        title: "Premium Wedding Photography Package",
+        category: "Photography",
+        location: "Delhi NCR",
+        price: 25000,
+        rating: 4.8,
+        reviews: 24,
+        bookings: 12,
+        status: "active",
+        image: "/placeholder.jpg",
+        description: "Professional wedding photography with premium editing and album",
+        createdAt: "2024-01-15"
+      },
+      {
+        id: "2",
+        title: "Luxury Wedding Venue",
+        category: "Venue",
+        location: "Mumbai",
+        price: 150000,
+        rating: 4.9,
+        reviews: 18,
+        bookings: 8,
+        status: "active",
+        image: "/placeholder.jpg",
+        description: "Exclusive wedding venue with stunning views and amenities",
+        createdAt: "2024-01-10"
+      }
+    ],
+    draft: [
+      {
+        id: "3",
+        title: "Catering Services Package",
+        category: "Catering",
+        location: "Bangalore",
+        price: 75000,
+        rating: 0,
+        reviews: 0,
+        bookings: 0,
+        status: "draft",
+        image: "/placeholder.jpg",
+        description: "Complete catering services for weddings and events",
+        createdAt: "2024-01-20"
+      }
+    ],
+    inactive: [
+      {
+        id: "4",
+        title: "Decoration Services",
+        category: "Decoration",
+        location: "Chennai",
+        price: 45000,
+        rating: 4.5,
+        reviews: 15,
+        bookings: 6,
+        status: "inactive",
+        image: "/placeholder.jpg",
+        description: "Professional decoration services for all occasions",
+        createdAt: "2023-12-01"
+      }
+    ]
   }
 
-  const handleDeleteClick = (listingId: string) => {
-    setSelectedListing(listingId)
-    setDeleteDialogOpen(true)
-  }
-
-  const handleDeleteConfirm = () => {
-    if (selectedListing) {
-      deleteVendorListing(selectedListing)
-      setDeleteDialogOpen(false)
-
-      toast({
-        title: "Listing Deleted",
-        description: "The listing has been permanently deleted.",
-      })
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return <Badge className="bg-green-100 text-green-800">Active</Badge>
+      case "draft":
+        return <Badge className="bg-yellow-100 text-yellow-800">Draft</Badge>
+      case "inactive":
+        return <Badge className="bg-gray-100 text-gray-800">Inactive</Badge>
+      default:
+        return <Badge variant="secondary">{status}</Badge>
     }
   }
 
+  const ListingCard = ({ listing }: { listing: any }) => (
+    <Card className="mb-4">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-4">
+            <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
+              <span className="text-gray-500 text-sm">Image</span>
+            </div>
+            <div className="flex-1">
+              <CardTitle className="text-lg">{listing.title}</CardTitle>
+              <CardDescription className="mb-2">{listing.description}</CardDescription>
+              <div className="flex items-center space-x-4 text-sm text-gray-600">
+                <div className="flex items-center">
+                  <MapPin className="mr-1 h-3 w-3" />
+                  {listing.location}
+                </div>
+                <div className="flex items-center">
+                  <Star className="mr-1 h-3 w-3" />
+                  {listing.rating > 0 ? `${listing.rating} (${listing.reviews})` : "No reviews"}
+                </div>
+                <div className="flex items-center">
+                  <Calendar className="mr-1 h-3 w-3" />
+                  {listing.bookings} bookings
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-lg font-semibold">₹{listing.price.toLocaleString()}</div>
+            {getStatusBadge(listing.status)}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-500">
+            Created: {listing.createdAt}
+          </div>
+          <div className="flex space-x-2">
+            <Button variant="outline" size="sm">
+              <Eye className="mr-1 h-3 w-3" />
+              View
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => router.push(`/vendor-dashboard/listings/${listing.id}/edit`)}>
+              <Edit className="mr-1 h-3 w-3" />
+              Edit
+            </Button>
+            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+              <Trash2 className="mr-1 h-3 w-3" />
+              Delete
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold">My Listings</h1>
-          <p className="text-gray-500 mt-1">Manage your venue and service listings</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">My Listings</h1>
+          <p className="text-gray-600">Manage your service listings and packages</p>
         </div>
-        <Button onClick={() => router.push("/vendor-dashboard/listings/new")} className="mt-4 md:mt-0">
-          <Plus className="mr-2 h-4 w-4" /> Add New Listing
+        <Button className="mt-4 md:mt-0" onClick={() => router.push("/vendor-dashboard/listings/new")}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add New Listing
         </Button>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search listings..."
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Listings</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {listings.active.length + listings.draft.length + listings.inactive.length}
+                </p>
+              </div>
+              <DollarSign className="h-8 w-8 text-pink-600" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Active</p>
+                <p className="text-2xl font-bold text-gray-900">{listings.active.length}</p>
         </div>
-        <div className="w-full md:w-48">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger>
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
+              <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
+                <div className="h-4 w-4 bg-green-600 rounded-full"></div>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredListings.length > 0 ? (
-          filteredListings.map((listing) => (
-            <Card key={listing.id} className="overflow-hidden">
-              <div className="aspect-video relative">
-                <Image
-                  src={listing.image || "/placeholder.svg"}
-                  alt={listing.title}
-                  width={400}
-                  height={225}
-                  className="object-cover w-full h-full"
-                />
-                <div className="absolute top-3 left-3 bg-white/90 text-xs font-medium px-2 py-1 rounded">
-                  {listing.category}
-                </div>
-                <div className="absolute top-3 right-3">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      listing.status === "Active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
-                    }`}
-                  >
-                    {listing.status}
-                  </span>
-                </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Draft</p>
+                <p className="text-2xl font-bold text-gray-900">{listings.draft.length}</p>
               </div>
-              <CardContent className="p-4">
-                <h3 className="font-semibold text-lg mb-2">{listing.title}</h3>
-                <p className="text-sm text-gray-500 line-clamp-2 mb-3">{listing.description}</p>
-                <div className="font-bold text-primary text-xl mb-3">{listing.price}</div>
-                <div className="flex flex-wrap gap-1 mb-4">
-                  {listing.features.slice(0, 3).map((feature) => (
-                    <span key={feature} className="text-xs bg-gray-100 px-2 py-1 rounded">
-                      {feature}
-                    </span>
-                  ))}
-                  {listing.features.length > 3 && (
-                    <span className="text-xs bg-gray-100 px-2 py-1 rounded">+{listing.features.length - 3} more</span>
-                  )}
+              <div className="h-8 w-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                <div className="h-4 w-4 bg-yellow-600 rounded-full"></div>
+              </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => router.push(`/vendor-dashboard/listings/${listing.id}`)}
-                  >
-                    <Edit className="w-4 h-4 mr-2" /> Edit
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className={`flex-1 ${listing.status === "Active" ? "text-yellow-600" : "text-green-600"}`}
-                    onClick={() => handleToggleStatus(listing.id, listing.status)}
-                  >
-                    {listing.status === "Active" ? (
-                      <>
-                        <EyeOff className="w-4 h-4 mr-2" /> Deactivate
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="w-4 h-4 mr-2" /> Activate
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Inactive</p>
+                <p className="text-2xl font-bold text-gray-900">{listings.inactive.length}</p>
+                </div>
+              <div className="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center">
+                <div className="h-4 w-4 bg-gray-600 rounded-full"></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+                </div>
+
+      {/* Listings Tabs */}
+      <div className="space-y-6">
+        <div className="flex space-x-4 border-b">
+          <button
+            onClick={() => setActiveTab("active")}
+            className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "active"
+                ? "border-pink-500 text-pink-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Active ({listings.active.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("draft")}
+            className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "draft"
+                ? "border-pink-500 text-pink-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Draft ({listings.draft.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("inactive")}
+            className={`pb-2 px-1 border-b-2 font-medium text-sm ${
+              activeTab === "inactive"
+                ? "border-pink-500 text-pink-600"
+                : "border-transparent text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Inactive ({listings.inactive.length})
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {activeTab === "active" && (
+            <>
+              {listings.active.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No active listings</h3>
+                    <p className="text-gray-500">You don't have any active listings at the moment.</p>
+                    <Button className="mt-4" onClick={() => router.push("/vendor-dashboard/listings/new")}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Your First Listing
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                listings.active.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))
+              )}
+            </>
+          )}
+
+          {activeTab === "draft" && (
+            <>
+              {listings.draft.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Edit className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No draft listings</h3>
+                    <p className="text-gray-500">You don't have any draft listings.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                listings.draft.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))
+              )}
                       </>
                     )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-red-600"
-                    onClick={() => handleDeleteClick(listing.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+
+          {activeTab === "inactive" && (
+            <>
+              {listings.inactive.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center">
+                    <Trash2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No inactive listings</h3>
+                    <p className="text-gray-500">You don't have any inactive listings.</p>
               </CardContent>
             </Card>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12">
-            <p className="text-lg font-medium">No listings found</p>
-            <p className="text-gray-500 mt-1">Try adjusting your search or filter criteria</p>
-            <Button className="mt-4" onClick={() => router.push("/vendor-dashboard/listings/new")}>
-              Add New Listing
-            </Button>
+              ) : (
+                listings.inactive.map((listing) => (
+                  <ListingCard key={listing.id} listing={listing} />
+                ))
+              )}
+            </>
+          )}
           </div>
-        )}
       </div>
-
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Listing</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this listing? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

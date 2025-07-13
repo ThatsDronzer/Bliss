@@ -10,7 +10,7 @@ import { Bell, LogOut, Settings, User, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useAuth } from "@/lib/auth"
+import { UserButton } from "@clerk/nextjs"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,15 +22,7 @@ import {
 
 export function AdminHeader() {
   const router = useRouter()
-  const { admin, isAuthenticated, isAdmin, logout, adminNotifications } = useAuth()
   const [searchQuery, setSearchQuery] = useState("")
-
-  const handleLogout = () => {
-    logout()
-    router.push("/")
-  }
-
-  const unreadNotifications = adminNotifications.filter((notification) => notification.status === "unread").length
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -65,15 +57,15 @@ export function AdminHeader() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
-              {unreadNotifications > 0 && (
+              {/* unreadNotifications > 0 && (
                 <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-primary"></span>
-              )}
+              ) */}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-80">
             <DropdownMenuLabel>Notifications</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {adminNotifications.slice(0, 5).map((notification) => (
+            {/* adminNotifications.slice(0, 5).map((notification) => (
               <DropdownMenuItem key={notification.id} className="py-3 cursor-pointer">
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between">
@@ -85,7 +77,7 @@ export function AdminHeader() {
                   <p className="text-sm text-gray-600">{notification.message}</p>
                 </div>
               </DropdownMenuItem>
-            ))}
+            )) */}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/admin-dashboard/notifications" className="w-full text-center text-primary">
@@ -96,15 +88,12 @@ export function AdminHeader() {
         </DropdownMenu>
 
         <div className="flex items-center gap-2">
-          <Button variant="destructive" size="sm" onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          <UserButton />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
-                {admin?.avatar ? (
+                {/* admin?.avatar ? (
                   <Image
                     src={admin.avatar || "/placeholder.svg"}
                     alt={admin.name}
@@ -114,7 +103,7 @@ export function AdminHeader() {
                   />
                 ) : (
                   <User className="h-5 w-5" />
-                )}
+                ) */}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

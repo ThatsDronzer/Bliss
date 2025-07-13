@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Upload, CheckCircle, XCircle, Clock, AlertCircle, Building, User, FileText, CreditCard } from "lucide-react"
 
-import { useAuth } from "@/lib/auth"
+import { useAuth, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +18,8 @@ import { toast } from "@/components/ui/use-toast"
 
 export default function VendorVerificationPage() {
   const router = useRouter()
-  const { isAuthenticated, isVendor, vendor } = useAuth()
+  const { isAuthenticated, isVendor } = useAuth()
+  const { user } = useUser()
   const [isLoading, setIsLoading] = useState(false)
   const [verificationData, setVerificationData] = useState({
     // Business Information
@@ -87,7 +88,7 @@ export default function VendorVerificationPage() {
     }
   }, [isAuthenticated, isVendor, router])
 
-  if (!isAuthenticated || !isVendor || !vendor) {
+  if (!isAuthenticated || !isVendor || !user) {
     return null
   }
 

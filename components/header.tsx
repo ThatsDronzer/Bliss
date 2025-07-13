@@ -8,59 +8,65 @@ import { useRouter } from "next/navigation"
 import { LogOut, Menu, ShoppingCart, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/lib/auth"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { CoinDisplay } from "@/components/ui/coin-display"
 import { CoinService } from "@/lib/coin-service"
-import { SignedIn, SignedOut, SignInButton, SignUpButton, useClerk, UserButton } from "@clerk/nextjs"
+import { SignedIn, SignedOut, useClerk, UserButton, useAuth, useUser } from "@clerk/nextjs"
 
 export function Header() {
   const router = useRouter()
-  const { user, isAuthenticated, isVendor, isAdmin, logout } = useAuth()
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
   const [searchQuery, setSearchQuery] = useState("")
   const [userCoins, setUserCoins] = useState(0)
-   const { signOut } = useClerk();
+  const { signOut } = useClerk();
 
   // Demo cart items count
   const cartItemsCount = 3
 
+  // Get user role from Clerk metadata
+  const userRole = user?.unsafeMetadata?.role as string || "user"
+
   useEffect(() => {
     const fetchCoinBalance = async () => {
-      if (isAuthenticated && user) {
-        const balance = await CoinService.getUserBalance(user.id)
-        setUserCoins(balance)
+      if (isSignedIn && user) {
+        // For demo purposes, set a default coin balance
+        setUserCoins(1250)
       }
     }
     fetchCoinBalance()
-  }, [isAuthenticated, user])
+  }, [isSignedIn, user])
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await signOut()
     router.push("/")
   }
 
   const getDashboardLink = () => {
-    if (isAdmin) return "/admin-dashboard"
-    if (isVendor) return "/vendor-dashboard"
-    return "/dashboard"
+    // Route to appropriate dashboard based on user role
+    if (userRole === "vendor") {
+      return "/vendor-dashboard"
+    } else if (userRole === "admin") {
+      return "/admin-dashboard"
+    } else {
+      return "/dashboard"
+    }
   }
 
   const handleBecomeVendor = async () => {
     await signOut(); // logs out current user
-    router.push("/sign-up?role=vendor"); // redirect to vendor login
+    router.push("/sign-up?role=vendor"); // redirect to vendor sign up
   };
 
   const handleSignIn = async () => {
-    // router.push("/login")
     await signOut();
-     router.push("/sign-in?role=user")
+    router.push("/sign-in?role=user")
   }
 
   const handleSignUp = async () => {
-     await signOut();
-    // router.push("/signup")
+    await signOut();
     router.push("/sign-up?role=user")
   }
 
@@ -81,7 +87,6 @@ export function Header() {
     }
   }
 
-
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-xl">
       <div className="container mx-auto px-4 py-4">
@@ -97,13 +102,6 @@ export function Header() {
 
             {/* Navigation Links - Now part of left side */}
             <nav className="hidden lg:flex items-center gap-8">
-              {/* <Link
-                href="/vendors"
-                className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors duration-200 relative group"
-              >
-                Explore Vendors
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-pink-600 group-hover:w-full transition-all duration-300"></span>
-              </Link> */}
               <Link
                 href="/explore-services"
                 className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors duration-200 relative group"
@@ -127,26 +125,20 @@ export function Header() {
               </Link>
             </nav>
           </div>
-            
-            {/* -------------------------------- new thing added here---------------------- */}
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-            {/* -------------------------------- end here---------------------- */}
 
           {/* Right Side - User Actions */}
           <div className="flex items-center gap-3">
-            {isAuthenticated ? (
+            <SignedIn>
               <>
-                {/* Coin Display */}
-                {!(isVendor || isAdmin) && (
+                {/* Coin Display - Only show for regular users */}
+                {userRole === "user" && (
                   <Link href="/dashboard/coins">
                     <CoinDisplay balance={userCoins} className="hidden lg:flex" />
                   </Link>
                 )}
                 
-                {/* Cart Button - Only visible after login */}
-                {!(isVendor || isAdmin) && (
+                {/* Cart Button - Only visible for regular users */}
+                {userRole === "user" && (
                   <Button
                     variant="ghost"
                     size="icon"
@@ -173,31 +165,28 @@ export function Header() {
                     Dashboard
                   </Button>
 
-                  {!isVendor && !isAdmin && (
+                  {/* Only show "Become a Vendor" button for regular users */}
+                  {userRole === "user" && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => router.push("/vendor-login")}
+                      onClick={handleBecomeVendor}
                       className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
                     >
                       Become a Vendor
                     </Button>
                   )}
 
-                  {/* <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleLogout}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 transition-all duration-200"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
-                  </Button> */}
+                  {/* Removed Vendor Dashboard button for vendors */}
                 </div>
+
+                {/* User Button */}
+                <UserButton />
               </>
-            ) : (
+            </SignedIn>
+
+            <SignedOut>
               <div className="hidden lg:flex items-center gap-3">
-                <SignedOut>
                 <Button
                   variant="outline"
                   size="sm"
@@ -213,7 +202,6 @@ export function Header() {
                 >
                   Sign Up
                 </Button>
-                </SignedOut>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -222,9 +210,8 @@ export function Header() {
                 >
                   Vendor Login
                 </Button>
-
               </div>
-            )}
+            </SignedOut>
 
             {/* Mobile Menu */}
             <Sheet>
@@ -253,31 +240,98 @@ export function Header() {
                     />
                   </form>
 
-                  {isAuthenticated && (
-                    <div className="flex items-center justify-between px-2">
-                      <CoinDisplay balance={userCoins} />
-                    </div>
-                  )}
-
-                  <div className="space-y-4">
-                    {/* <Link href="/vendors" className="block text-base font-medium hover:text-pink-600 transition-colors">
-                      Explore Vendors
-                    </Link> */}
-                    <Link href="/explore-services" className="block text-base font-medium hover:text-pink-600 transition-colors">
+                  {/* Mobile Navigation */}
+                  <nav className="flex flex-col gap-4">
+                    <Link
+                      href="/explore-services"
+                      className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors"
+                    >
                       Explore Services
                     </Link>
-                    <Link href="/home-service" className="block text-base font-medium hover:text-pink-600 transition-colors">
+                    <Link
+                      href="/home-service"
+                      className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors"
+                    >
                       Home Services
                     </Link>
-                    <Link href="/about" className="block text-base font-medium hover:text-pink-600 transition-colors">
+                    <Link
+                      href="/about"
+                      className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors"
+                    >
                       About Us
                     </Link>
-                    {!isAuthenticated && (
-                      <Link href="/vendor-login" className="block text-base font-medium hover:text-pink-600 transition-colors">
+                  </nav>
+
+                  {/* Mobile User Actions */}
+                  <SignedIn>
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        variant="ghost"
+                        onClick={() => router.push(getDashboardLink())}
+                        className="justify-start text-gray-700 hover:text-pink-600 hover:bg-pink-50"
+                      >
+                        Dashboard
+                      </Button>
+                      
+                      {/* Only show cart for regular users */}
+                      {userRole === "user" && (
+                        <Button
+                          variant="ghost"
+                          onClick={() => router.push("/cart")}
+                          className="justify-start text-gray-700 hover:text-pink-600 hover:bg-pink-50"
+                        >
+                          Cart ({cartItemsCount})
+                        </Button>
+                      )}
+                      
+                      {/* Only show "Become a Vendor" for regular users */}
+                      {userRole === "user" && (
+                        <Button
+                          variant="ghost"
+                          onClick={handleBecomeVendor}
+                          className="justify-start text-gray-700 hover:text-pink-600 hover:bg-pink-50"
+                        >
+                          Become a Vendor
+                        </Button>
+                      )}
+
+                      {/* Removed Vendor Dashboard button for vendors in mobile */}
+                      
+                      <Button
+                        variant="ghost"
+                        onClick={handleLogout}
+                        className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Sign Out
+                      </Button>
+                    </div>
+                  </SignedIn>
+
+                  <SignedOut>
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={handleSignIn}
+                        className="border-pink-200 text-pink-600 hover:bg-pink-50"
+                      >
+                        Sign In
+                      </Button>
+                      <Button
+                        onClick={handleSignUp}
+                        className="bg-pink-600 hover:bg-pink-700 text-white"
+                      >
+                        Sign Up
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={handleBecomeVendor}
+                        className="text-gray-700 hover:text-pink-600 hover:bg-pink-50"
+                      >
                         Vendor Login
-                      </Link>
-                    )}
-                  </div>
+                      </Button>
+                    </div>
+                  </SignedOut>
                 </div>
               </SheetContent>
             </Sheet>

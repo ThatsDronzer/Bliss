@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useRentalStore } from "@/lib/stores/rental-store";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { toast } from "@/components/ui/use-toast";
 
 export default function CartPage() {

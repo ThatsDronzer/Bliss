@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Upload, Plus, X } from "lucide-react"
 
 import { useAuth, useUser } from "@clerk/nextjs"
@@ -14,9 +14,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/components/ui/use-toast"
 
-export default function NewListingPage() {
+export default function EditListingPage() {
   const router = useRouter()
-  const { isAuthenticated, isVendor, addVendorListing } = useAuth()
+  const params = useParams()
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const userRole = user?.unsafeMetadata?.role as string || "user";
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
@@ -32,13 +35,13 @@ export default function NewListingPage() {
 
   // Redirect if not authenticated as vendor
   useEffect(() => {
-    if (!isAuthenticated || !isVendor) {
-      router.push("/")
+    if (isLoaded && (!isSignedIn || userRole !== "vendor")) {
+      router.push("/");
     }
-  }, [isAuthenticated, isVendor, router])
+  }, [isLoaded, isSignedIn, userRole, router]);
 
-  if (!isAuthenticated || !isVendor) {
-    return null
+  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
+    return null;
   }
 
   const categories = [
@@ -116,35 +119,16 @@ export default function NewListingPage() {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      // Add the new listing
-      const newListing = {
-        id: `listing-${Date.now()}`,
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        price: formData.price,
-        location: formData.location,
-        capacity: formData.capacity,
-        features: [],
-        image: formData.images[0] || "/placeholder.svg",
-        images: formData.images,
-        terms: formData.terms,
-        status: "Active",
-        createdAt: new Date().toISOString(),
-      }
-
-      addVendorListing(newListing)
-
       toast({
-        title: "Listing Created",
-        description: "Your new listing has been successfully created.",
+        title: "Listing Updated",
+        description: "Your listing has been successfully updated.",
       })
 
       router.push("/vendor-dashboard/listings")
     } catch (err) {
       toast({
         title: "Error",
-        description: "An error occurred while creating the listing. Please try again.",
+        description: "An error occurred while updating the listing. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -168,8 +152,8 @@ export default function NewListingPage() {
 
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Add New Listing</h1>
-          <p className="text-gray-500 mt-1">Create a new venue or service listing</p>
+          <h1 className="text-3xl font-bold">Edit Listing</h1>
+          <p className="text-gray-500 mt-1">Update your venue or service listing</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -177,7 +161,7 @@ export default function NewListingPage() {
           <Card>
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Provide the essential details about your listing</CardDescription>
+              <CardDescription>Update the essential details about your listing</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -351,7 +335,7 @@ export default function NewListingPage() {
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Listing"}
+              {isLoading ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "@/lib/auth"
+import { useAuth, useUser } from "@clerk/nextjs"
 import { CoinService } from "@/lib/coin-service"
 import { toast } from "@/components/ui/use-toast"
 

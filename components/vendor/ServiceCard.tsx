@@ -16,15 +16,22 @@ interface ServiceCardProps {
   service: Service
   isSelected: boolean
   onSelect: () => void
+  duration?: string
+  availability?: string
 }
 
-export function ServiceCard({ service, isSelected, onSelect }: ServiceCardProps) {
+export function ServiceCard({ service, isSelected, onSelect, duration, availability }: ServiceCardProps) {
   return (
-    <Card className={`transition-all duration-200 ${isSelected ? 'ring-2 ring-pink-600' : ''}`}>
+    <Card className={`transition-all duration-200 ${isSelected ? 'ring-2 ring-pink-600' : ''} bg-white/90 shadow-md hover:shadow-lg`}> 
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="font-semibold text-lg mb-1">{service.name}</h3>
+            <h3 className="font-semibold text-lg mb-1 flex items-center gap-2">
+              {service.name}
+              {duration && (
+                <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">⏱ {duration}</span>
+              )}
+            </h3>
             <Badge variant="secondary" className="bg-gray-100">
               {service.description.length > 30 
                 ? service.description.substring(0, 30) + "..."
@@ -33,7 +40,13 @@ export function ServiceCard({ service, isSelected, onSelect }: ServiceCardProps)
           </div>
           <span className="text-xl font-bold">₹{service.price}</span>
         </div>
-        <p className="text-gray-600 text-sm mb-4">{service.description}</p>
+        <p className="text-gray-600 text-sm mb-2">{service.description}</p>
+        {availability && (
+          <div className="flex items-center gap-2 mb-2 text-xs text-green-700">
+            <svg width="16" height="16" fill="currentColor" className="inline-block"><circle cx="8" cy="8" r="8" fill="#22c55e" /></svg>
+            <span>Available: {availability}</span>
+          </div>
+        )}
         <Button 
           variant={isSelected ? "default" : "outline"}
           className="w-full"

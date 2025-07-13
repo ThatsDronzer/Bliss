@@ -2,375 +2,343 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth, useUser } from "@clerk/nextjs"
 import Image from "next/image"
-import { Mail, Phone, MapPin, Calendar, Edit, Globe } from "lucide-react"
+import { Camera, Mail, Phone, MapPin, Calendar, Edit2, Save, Building, Globe, Star, CheckCircle } from "lucide-react"
 
-import { useAuth } from "@/lib/auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { toast } from "@/components/ui/use-toast"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Label } from "@/components/ui/label"
 import { CoinDisplay } from "@/components/ui/coin-display"
-import { CoinHistory } from "@/components/coin-history"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { CoinService } from "@/lib/coin-service"
 
 export default function VendorProfilePage() {
   const router = useRouter()
-  const { vendor, isAuthenticated, isVendor, updateVendorProfile } = useAuth()
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [profileData, setProfileData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    location: "",
-    category: "",
-    description: "",
-    established: "",
-    website: "",
-  })
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
+  const [isEditing, setIsEditing] = useState(false)
   const [coinBalance, setCoinBalance] = useState(0)
   const [coinTransactions, setCoinTransactions] = useState([])
-  const [refundDialogOpen, setRefundDialogOpen] = useState(false)
-  const [refundPolicy, setRefundPolicy] = useState(vendor?.refundPolicy || { description: '', cancellationTerms: [] })
-  const [refundDescription, setRefundDescription] = useState(refundPolicy.description || '')
-  const [cancellationTerms, setCancellationTerms] = useState(refundPolicy.cancellationTerms || [])
 
-  // Set initial profile data when vendor is loaded
-  useEffect(() => {
-    if (vendor) {
-      setProfileData({
-        name: vendor.name,
-        email: vendor.email,
-        phone: vendor.phone,
-        location: vendor.location,
-        category: vendor.category,
-        description: vendor.description,
-        established: vendor.established,
-        website: vendor.website,
-      })
-      // Fetch wallet info
-      CoinService.getUserBalance(vendor.id).then(setCoinBalance)
-      CoinService.getUserTransactions(vendor.id).then(setCoinTransactions)
-    }
-  }, [vendor])
+  // Get user role from Clerk metadata
+  const userRole = user?.unsafeMetadata?.role as string || "user"
 
-  // Redirect if not authenticated as vendor
+  // Redirect if not authenticated or not a vendor
   useEffect(() => {
-    if (!isAuthenticated || !isVendor) {
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in?role=vendor")
+    } else if (isLoaded && isSignedIn && userRole !== "vendor") {
       router.push("/")
     }
-  }, [isAuthenticated, isVendor, router])
+  }, [isLoaded, isSignedIn, userRole, router])
 
-  if (!isAuthenticated || !isVendor || !vendor) {
+  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null
   }
 
-  const handleSaveProfile = () => {
-    // Validate inputs
-    if (!profileData.name || !profileData.email || !profileData.phone) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      })
-      return
-    }
-
-    // Update profile
-    updateVendorProfile(profileData)
-    setDialogOpen(false)
-    toast({
-      title: "Profile updated",
-      description: "Your business profile information has been updated successfully",
-    })
+  // Mock vendor data - in a real app, you'd fetch this from your database
+  const vendorData = {
+    name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : "Vendor",
+    email: user.emailAddresses[0]?.emailAddress || "vendor@example.com",
+    phone: user.phoneNumbers[0]?.phoneNumber || "+91 98765 43210",
+    category: "Wedding Services",
+    location: "Delhi NCR",
+    description: "Professional wedding service provider with years of experience in making special days memorable.",
+    established: "2018",
+    website: "www.vendorwebsite.com",
+    status: "Verified",
+    joinDate: "2024-01-15",
+    rating: 4.8,
+    totalBookings: 156,
+    totalRevenue: "₹2,45,000",
   }
 
-  const handleSaveRefundPolicy = () => {
-    // Save refund policy (should call updateVendorProfile or similar API)
-    setRefundPolicy({ description: refundDescription, cancellationTerms })
-    setRefundDialogOpen(false)
-    toast({
-      title: "Refund Policy updated",
-      description: "Your refund policy has been updated successfully",
-    })
-    // TODO: Persist refund policy to backend/profile
+  const [formData, setFormData] = useState({
+    name: vendorData.name,
+    email: vendorData.email,
+    phone: vendorData.phone,
+    category: vendorData.category,
+    location: vendorData.location,
+    description: vendorData.description,
+    established: vendorData.established,
+    website: vendorData.website,
+  })
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    // In a real app, you'd update the vendor profile in your database
+    console.log("Profile updated:", formData)
+    setIsEditing(false)
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Business Profile</h1>
-          <p className="text-gray-500 mt-1">Manage your business information</p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)} className="mt-4 md:mt-0">
-          <Edit className="mr-2 h-4 w-4" /> Edit Profile
-        </Button>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Vendor Profile</h1>
+        <p className="text-gray-600">Manage your vendor profile and settings</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-1">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-32 h-32 relative mb-4">
-              <Image
-                src={vendor.avatar || "/placeholder.svg"}
-                alt={vendor.name}
-                width={128}
-                height={128}
-                className="rounded-full object-cover border-4 border-white shadow"
-              />
-              <button className="absolute bottom-0 right-0 bg-primary text-white rounded-full p-2">
-                <Edit className="h-4 w-4" />
-              </button>
-            </div>
-            <CardTitle>{vendor.name}</CardTitle>
-            <CardDescription>{vendor.category}</CardDescription>
+        {/* Profile Overview */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Basic Information */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Basic Information</CardTitle>
+                  <CardDescription>Update your business details and contact information</CardDescription>
+                </div>
+                <Button
+                  variant={isEditing ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => setIsEditing(!isEditing)}
+                >
+                  {isEditing ? (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save
+                    </>
+                  ) : (
+                    <>
+                      <Edit2 className="mr-2 h-4 w-4" />
+                      Edit
+                    </>
+                  )}
+                </Button>
+              </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Email</p>
-                  <p>{vendor.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Phone</p>
-                  <p>{vendor.phone}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Location</p>
-                  <p>{vendor.location}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Calendar className="w-5 h-5 text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-500">Established</p>
-                  <p>{vendor.established}</p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Wallet</CardTitle>
-            <CardDescription>Your coin balance and transaction history</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-6">
-              <CoinDisplay balance={coinBalance} />
-            </div>
-            <CoinHistory transactions={coinTransactions} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Refund Policy</CardTitle>
-              <CardDescription>Manage your business refund and cancellation policy</CardDescription>
-            </div>
-            <Button variant="outline" onClick={() => setRefundDialogOpen(true)}>
-              <Edit className="mr-2 h-4 w-4" /> Edit
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-2">
-              <span className="font-semibold">Description:</span>
-              <p className="text-gray-700 mt-1">{refundPolicy.description || 'No refund policy set.'}</p>
-            </div>
-            <div>
-              <span className="font-semibold">Cancellation Terms:</span>
-              <ul className="list-disc ml-6 mt-1">
-                {refundPolicy.cancellationTerms && refundPolicy.cancellationTerms.length > 0 ? (
-                  refundPolicy.cancellationTerms.map((term, idx) => (
-                    <li key={idx} className="text-gray-700">
-                      {term.daysBeforeEvent} days before event: {term.refundPercentage}% refund
-                    </li>
-                  ))
-                ) : (
-                  <li className="text-gray-500">No terms set.</li>
-                )}
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Edit Business Profile</DialogTitle>
-            <DialogDescription>Update your business information</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
               <Label htmlFor="name">Business Name</Label>
               <Input
                 id="name"
-                value={profileData.name}
-                onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                required
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
               <Input
                 id="email"
+                      name="email"
                 type="email"
-                value={profileData.email}
-                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                required
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Phone</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
               <Input
                 id="phone"
-                value={profileData.phone}
-                onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                required
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Service Category</Label>
+                    <Input
+                      id="category"
+                      name="category"
+                      value={formData.category}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
               />
             </div>
-            <div className="grid gap-2">
+                  <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
               <Input
                 id="location"
-                value={profileData.location}
-                onChange={(e) => setProfileData({ ...profileData, location: e.target.value })}
+                      name="location"
+                      value={formData.location}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="category">Category</Label>
-              <Input
-                id="category"
-                value={profileData.category}
-                onChange={(e) => setProfileData({ ...profileData, category: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                value={profileData.description}
-                onChange={(e) => setProfileData({ ...profileData, description: e.target.value })}
-                rows={3}
-              />
-            </div>
-            <div className="grid gap-2">
+                  <div className="space-y-2">
               <Label htmlFor="established">Established Year</Label>
               <Input
                 id="established"
-                value={profileData.established}
-                onChange={(e) => setProfileData({ ...profileData, established: e.target.value })}
+                      name="established"
+                      value={formData.established}
+                      onChange={handleInputChange}
+                      disabled={!isEditing}
               />
             </div>
-            <div className="grid gap-2">
+                </div>
+                <div className="space-y-2">
               <Label htmlFor="website">Website</Label>
               <Input
                 id="website"
-                value={profileData.website}
-                onChange={(e) => setProfileData({ ...profileData, website: e.target.value })}
+                    name="website"
+                    value={formData.website}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
               />
             </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveProfile}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Edit Refund Policy</DialogTitle>
-            <DialogDescription>Update your refund policy and cancellation terms</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="refund-description">Description</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Business Description</Label>
               <Textarea
-                id="refund-description"
-                value={refundDescription}
-                onChange={e => setRefundDescription(e.target.value)}
-                rows={3}
+                    id="description"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    rows={4}
               />
             </div>
-            <div className="grid gap-2">
-              <Label>Cancellation Terms</Label>
-              <ul className="space-y-2">
-                {cancellationTerms.map((term, idx) => (
-                  <li key={idx} className="flex items-center gap-2">
-                    <Input
-                      type="number"
-                      min={1}
-                      value={term.daysBeforeEvent}
-                      onChange={e => {
-                        const updated = [...cancellationTerms]
-                        updated[idx].daysBeforeEvent = Number(e.target.value)
-                        setCancellationTerms(updated)
-                      }}
-                      className="w-24"
-                      placeholder="Days before"
-                    />
-                    <span>days before event:</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={term.refundPercentage}
-                      onChange={e => {
-                        const updated = [...cancellationTerms]
-                        updated[idx].refundPercentage = Number(e.target.value)
-                        setCancellationTerms(updated)
-                      }}
-                      className="w-20"
-                      placeholder="% refund"
-                    />
-                    <span>% refund</span>
-                    <Button variant="ghost" size="icon" onClick={() => setCancellationTerms(cancellationTerms.filter((_, i) => i !== idx))}>
-                      ×
+                {isEditing && (
+                  <div className="flex gap-2">
+                    <Button type="submit">Save Changes</Button>
+                    <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
+                      Cancel
                     </Button>
-                  </li>
-                ))}
-              </ul>
-              <Button variant="outline" className="mt-2" onClick={() => setCancellationTerms([...cancellationTerms, { daysBeforeEvent: 1, refundPercentage: 0 }])}>
-                + Add Term
+                  </div>
+                )}
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Business Statistics */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Business Statistics</CardTitle>
+              <CardDescription>Your performance metrics and achievements</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-pink-600">{vendorData.totalBookings}</div>
+                  <div className="text-sm text-gray-500">Total Bookings</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-pink-600">{vendorData.rating}</div>
+                  <div className="text-sm text-gray-500">Average Rating</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-pink-600">{vendorData.totalRevenue}</div>
+                  <div className="text-sm text-gray-500">Total Revenue</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Profile Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col items-center text-center space-y-4">
+                <Avatar className="w-24 h-24">
+                  <AvatarImage src={user.imageUrl} alt={vendorData.name} />
+                  <AvatarFallback className="text-2xl">
+                    {vendorData.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-lg font-semibold">{vendorData.name}</h3>
+                  <p className="text-sm text-gray-500">{vendorData.category}</p>
+                  <Badge className="mt-2" variant="secondary">
+                    <CheckCircle className="mr-1 h-3 w-3" />
+                    {vendorData.status}
+                  </Badge>
+                </div>
+              </div>
+              <Separator className="my-4" />
+              <div className="space-y-3">
+                <div className="flex items-center text-sm">
+                  <Mail className="mr-2 h-4 w-4 text-gray-400" />
+                  <span>{vendorData.email}</span>
+                </div>
+                <div className="flex items-center text-sm">
+                  <Phone className="mr-2 h-4 w-4 text-gray-400" />
+                  <span>{vendorData.phone}</span>
+                </div>
+                <div className="flex items-center text-sm">
+                  <MapPin className="mr-2 h-4 w-4 text-gray-400" />
+                  <span>{vendorData.location}</span>
+                </div>
+                <div className="flex items-center text-sm">
+                  <Calendar className="mr-2 h-4 w-4 text-gray-400" />
+                  <span>Joined {vendorData.joinDate}</span>
+                </div>
+                <div className="flex items-center text-sm">
+                  <Building className="mr-2 h-4 w-4 text-gray-400" />
+                  <span>Est. {vendorData.established}</span>
+                </div>
+                <div className="flex items-center text-sm">
+                  <Globe className="mr-2 h-4 w-4 text-gray-400" />
+                  <span>{vendorData.website}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Wallet Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Wallet</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">Available Balance</span>
+                  <CoinDisplay balance={coinBalance} />
+                </div>
+                <Button variant="outline" className="w-full">
+                  View Transaction History
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button variant="outline" className="w-full justify-start">
+                <Edit2 className="mr-2 h-4 w-4" />
+                Edit Profile
               </Button>
+              <Button variant="outline" className="w-full justify-start">
+                <Star className="mr-2 h-4 w-4" />
+                View Reviews
+              </Button>
+              <Button variant="outline" className="w-full justify-start">
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Verification Status
+              </Button>
+            </CardContent>
+          </Card>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRefundDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveRefundPolicy}>Save Policy</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
