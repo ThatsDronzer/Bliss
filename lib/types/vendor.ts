@@ -62,6 +62,17 @@ export interface VendorDetails {
       refundPercentage: number;
     }[];
   };
+  contact: {
+    phone: string;
+    email: string;
+    whatsapp: string;
+  };
+  businessHours: string;
+  socialLinks: {
+    facebook?: string;
+    instagram?: string;
+    website?: string;
+  };
 }
 
 export const mockVendorData: VendorDetails = {
@@ -181,5 +192,16 @@ export const mockVendorData: VendorDetails = {
       { daysBeforeEvent: 7, refundPercentage: 50 },
       { daysBeforeEvent: 3, refundPercentage: 25 }
     ]
+  },
+  contact: {
+    phone: "+91 98765 43210",
+    email: "elite@events.com",
+    whatsapp: "https://wa.me/919876543210"
+  },
+  businessHours: "Mon-Sun: 9:00 AM - 9:00 PM",
+  socialLinks: {
+    facebook: "https://facebook.com/eliteeventexperts",
+    instagram: "https://instagram.com/eliteeventexperts",
+    website: "https://eliteeventexperts.com"
   }
 }; 

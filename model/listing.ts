@@ -4,7 +4,7 @@ export interface IListing extends Document {
   title: string;
   description: string;
   price: number;
-  images: {
+  images?: {
     url: string;
     // filename: string;
   }[];

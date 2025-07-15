@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
-import { useAuth } from "@/lib/auth"
+import { useAuth, useUser } from "@clerk/nextjs"
 import { useBooking } from "@/hooks/use-booking"
 import { ServiceCard } from '@/components/vendor/ServiceCard'
 import { ReviewCard } from '@/components/vendor/ReviewCard'

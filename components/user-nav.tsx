@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useAuth } from "@/lib/auth"
+import { UserButton, useUser, useAuth } from "@clerk/nextjs"
 
 export function UserNav() {
   const { user, logout } = useAuth()

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Search, Star, MessageSquare } from "lucide-react"
 
-import { useAuth } from "@/lib/auth"
+import { useAuth, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -23,7 +23,9 @@ import { toast } from "@/components/ui/use-toast"
 
 export default function VendorReviewsPage() {
   const router = useRouter()
-  const { isAuthenticated, isVendor, vendorReviews, respondToReview } = useAuth()
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
+  const userRole = user?.unsafeMetadata?.role as string || "user"
   const [searchQuery, setSearchQuery] = useState("")
   const [ratingFilter, setRatingFilter] = useState("all")
   const [responseFilter, setResponseFilter] = useState("all")
@@ -31,14 +33,16 @@ export default function VendorReviewsPage() {
   const [selectedReview, setSelectedReview] = useState<any>(null)
   const [responseText, setResponseText] = useState("")
 
-  // Redirect if not authenticated as vendor
+  // Redirect if not authenticated or not a vendor
   useEffect(() => {
-    if (!isAuthenticated || !isVendor) {
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in?role=vendor")
+    } else if (isLoaded && isSignedIn && userRole !== "vendor") {
       router.push("/")
     }
-  }, [isAuthenticated, isVendor, router])
+  }, [isLoaded, isSignedIn, userRole, router])
 
-  if (!isAuthenticated || !isVendor) {
+  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null
   }
 

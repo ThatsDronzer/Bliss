@@ -1262,3 +1262,22 @@ export const useAuth = create<AuthState>()(
     }
   )
 )
+
+// Utility function for role-based redirects
+export const getRoleBasedRedirect = (userRole: string | undefined) => {
+  switch (userRole) {
+    case "vendor":
+      return "/vendor-dashboard";
+    case "admin":
+      return "/admin-dashboard";
+    case "user":
+      return "/dashboard";
+    default:
+      return "/";
+  }
+};
+
+// Utility function to check if user has access to a specific route
+export const hasRouteAccess = (userRole: string | undefined, requiredRole: string) => {
+  return userRole === requiredRole;
+};

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Upload, CheckCircle, XCircle, Clock, AlertCircle, Building, User, FileText, CreditCard } from "lucide-react"
 
-import { useAuth } from "@/lib/auth"
+import { useAuth, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +18,9 @@ import { toast } from "@/components/ui/use-toast"
 
 export default function VendorVerificationPage() {
   const router = useRouter()
-  const { isAuthenticated, isVendor, vendor } = useAuth()
+  const { isSignedIn, isLoaded } = useAuth()
+  const { user } = useUser()
+  const userRole = user?.unsafeMetadata?.role as string || "user"
   const [isLoading, setIsLoading] = useState(false)
   const [verificationData, setVerificationData] = useState({
     // Business Information
@@ -80,14 +82,16 @@ export default function VendorVerificationPage() {
   const [newCertification, setNewCertification] = useState("")
   const [newQualityStandard, setNewQualityStandard] = useState("")
 
-  // Redirect if not authenticated as vendor
+  // Redirect if not authenticated or not a vendor
   useEffect(() => {
-    if (!isAuthenticated || !isVendor) {
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in?role=vendor")
+    } else if (isLoaded && isSignedIn && userRole !== "vendor") {
       router.push("/")
     }
-  }, [isAuthenticated, isVendor, router])
+  }, [isLoaded, isSignedIn, userRole, router])
 
-  if (!isAuthenticated || !isVendor || !vendor) {
+  if (!isLoaded || !isSignedIn || userRole !== "vendor" || !user) {
     return null
   }
 
@@ -194,30 +198,40 @@ export default function VendorVerificationPage() {
     setCurrentStep(currentStep - 1)
   }
 
-  const handleSubmitVerification = async () => {
-    setIsLoading(true)
+const handleSubmitVerification = async () => {
+  setIsLoading(true)
 
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 3000))
+  try {
+    const response = await fetch("/api/vendor-verification", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(verificationData),
+    })
 
+    const result = await response.json()
+
+    if (result.success) {
       toast({
         title: "Verification Submitted",
         description: "Your verification documents have been submitted successfully. We'll review them within 3-5 business days.",
       })
-
-      // Reset form or redirect
       router.push("/vendor-dashboard")
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "An error occurred while submitting verification. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
+    } else {
+      throw new Error(result.message)
     }
+  } catch (err) {
+    toast({
+      title: "Error",
+      description: "An error occurred while submitting verification. Please try again.",
+      variant: "destructive"
+    })
+  } finally {
+    setIsLoading(false)
   }
+}
+
 
   const getStepStatus = (step: number) => {
     if (currentStep > step) return "completed"

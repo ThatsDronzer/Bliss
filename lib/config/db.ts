@@ -38,37 +38,29 @@
 //   }
 // };
 
-// export default connectDB;
-
-
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const MONGODB_URI = process.env.MONGODB_URI!;
-const MONGODB_DB = process.env.MONGODB_DB; // Add this line to get your database name from env
-
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable');
-}
-
-if (!MONGODB_DB) {
-  throw new Error('Please define the MONGODB_DB environment variable');
-}
 
 let isConnected = false;
 
-const connectDB = async () => {
-  if (isConnected) return;
-
+export default async function connectDB() {
+  if (isConnected) {
+    return;
+  }
+  if (mongoose.connection.readyState >= 1) {
+    isConnected = true;
+    return;
+  }
   try {
-    const db = await mongoose.connect(MONGODB_URI, {
-      dbName: MONGODB_DB, // Use the database name from env variable
+    await mongoose.connect(MONGODB_URI, {
+      // useNewUrlParser: true, // not needed in Mongoose 6+
+      // useUnifiedTopology: true, // not needed in Mongoose 6+
     });
     isConnected = true;
-    console.log('✅ MongoDB connected');
+    console.log("✅ MongoDB connected");
   } catch (error) {
-    console.error('❌ MongoDB connection error:', error);
+    console.error("MongoDB connection error:", error);
     throw error;
   }
-};
-
-export default connectDB;
+}

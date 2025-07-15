@@ -1,27 +1,71 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRoleAuth } from "@/hooks/use-role-auth"
 import { Users, Store, BookMarked, CreditCard, ArrowUp } from "lucide-react"
 
-import { useAuth } from "@/lib/auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 
 export default function AdminDashboardPage() {
-  const router = useRouter()
-  const { isAuthenticated, isAdmin, adminStats } = useAuth()
+  const { isAuthorized, isLoading, user } = useRoleAuth("admin");
 
-  // Redirect if not authenticated as admin
-  useEffect(() => {
-    if (!isAuthenticated || !isAdmin) {
-      router.push("/")
-    }
-  }, [isAuthenticated, isAdmin, router])
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading admin dashboard...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-  if (!isAuthenticated || !isAdmin) {
+  // Show nothing if not authorized (will redirect)
+  if (!isAuthorized || !user) {
     return null
+  }
+
+  // Demo admin stats data
+  const adminStats = {
+    users: {
+      total: 1250,
+      growth: "+12% this month",
+      newThisMonth: 85,
+    },
+    vendors: {
+      total: 320,
+      growth: "+8% this month",
+      newThisMonth: 18,
+    },
+    bookings: {
+      total: 3450,
+      growth: "+15% this month",
+      newThisMonth: 210,
+    },
+    revenue: {
+      total: "₹4,25,00,000",
+      growth: "+18% this month",
+      platformFees: "₹42,50,000",
+    },
+    categories: [
+      { name: "Venue", count: 85, percentage: 26 },
+      { name: "Photography", count: 65, percentage: 20 },
+      { name: "Catering", count: 45, percentage: 14 },
+      { name: "Decoration", count: 40, percentage: 12 },
+      { name: "Music", count: 35, percentage: 11 },
+    ],
+    monthlyData: [
+      { month: "Jan", revenue: 3200000 },
+      { month: "Feb", revenue: 3500000 },
+      { month: "Mar", revenue: 3800000 },
+      { month: "Apr", revenue: 4000000 },
+      { month: "May", revenue: 4200000 },
+      { month: "Jun", revenue: 4250000 },
+    ],
   }
 
   return (

@@ -19,7 +19,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/lib/auth"
+import { useClerk } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 
 const navItems = [
@@ -63,11 +63,11 @@ const navItems = [
 
 export function VendorDashboardSidebar() {
   const pathname = usePathname()
-  const { logout } = useAuth()
+  const { signOut } = useClerk()
   const router = useRouter()
 
-  const handleSignOut = () => {
-    logout()
+  const handleSignOut = async () => {
+    await signOut()
     router.push("/")
   }
 

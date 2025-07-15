@@ -1,18 +1,20 @@
-import { headers } from 'next/headers';
-import { Webhook } from 'svix';
-import { NextResponse } from 'next/server';
-import connectDB from "@/lib/config/db"
-import User from '@/model/user';
-import { log } from 'console';
+import { Webhook } from "svix";
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import connectDB from "@/lib/config/db";
+import User from "@/model/user";
+import Vendor from "@/model/vendor";
 
-interface ClerkUserCreatedEvent {
-  type: "user.created" | "user.deleted" ;
+interface ClerkCreatedEvent {
+  type: "user.created" | "user.updated" | "user.deleted";
   data: {
     id: string;
+    email_addresses: { email_address: string }[];
     first_name: string;
     last_name: string;
-    email_addresses: { email_address: string }[];
-    // phone_no : number;
+    unsafe_metadata?: {
+      role?: "user" | "vendor";
+    };
   };
 }
 
@@ -20,47 +22,53 @@ export async function POST(req: Request) {
   const payload = await req.json();
   const headersList = headers();
 
-  const svix_id = (await headersList).get("svix-id")!;
-  const svix_timestamp = (await headersList).get("svix-timestamp")!;
-  const svix_signature = (await headersList).get("svix-signature")!;
-
   const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
 
-  let evt:ClerkUserCreatedEvent;
-
+  let evt: ClerkCreatedEvent;
   try {
-     evt = wh.verify(JSON.stringify(payload), {
-      "svix-id": svix_id,
-      "svix-timestamp": svix_timestamp,
-      "svix-signature": svix_signature,
-    }) as ClerkUserCreatedEvent; // 👈 Type assertion here
+    evt = wh.verify(JSON.stringify(payload), {
+      "svix-id": (await headersList).get("svix-id")!,
+      "svix-timestamp": (await headersList).get("svix-timestamp")!,
+      "svix-signature": (await headersList).get("svix-signature")!,
+    }) as ClerkCreatedEvent;
   } catch (err) {
-    return new NextResponse("Webhook verification failed", { status: 400 });
+    return new NextResponse("Invalid webhook", { status: 400 });
   }
 
   const eventType = evt.type;
+  const { id, email_addresses, first_name, last_name, unsafe_metadata } = evt.data;
+  const email = email_addresses?.[0]?.email_address ?? "";
+  const role = unsafe_metadata?.role;
 
-  if (eventType === "user.created") {
-    const { id, email_addresses, first_name,last_name } = evt.data;
 
+  if ((eventType === "user.created" || eventType === "user.updated") && role) {
     await connectDB();
 
-    const userExists = await User.findOne({ clerkId: id });
-    if (!userExists) {
-      await User.create({
-        clerkId: id,
-        name: `${first_name} ${last_name}`,
-        email: email_addresses[0].email_address,
-        // phone : phone_no,
-      });
+    if (role === "vendor") {
+      const vendorExists = await Vendor.findOne({ clerkId: id });
+      if (!vendorExists) {
+        await Vendor.create({
+          clerkId: id,
+          ownerName: `${first_name} ${last_name}`,
+          ownerEmail: email,
+        });
+      }
+    } else if (role === "user") {
+      const userExists = await User.findOne({ clerkId: id });
+      if (!userExists) {
+        await User.create({
+          clerkId: id,
+          name: `${first_name} ${last_name}`,
+          email: email,
+        });
+      }
     }
-    
   }
 
   if (eventType === "user.deleted") {
-    const { id } = evt.data;
-    await User.findOneAndDelete({ clerkId: id });
+    await User.findOneAndDelete({ clerkId: evt.data.id });
+    await Vendor.findOneAndDelete({ clerkId: evt.data.id });
   }
 
-  return NextResponse.json({ message: "Webhook received!" });
+  return NextResponse.json({ success: true });
 }
