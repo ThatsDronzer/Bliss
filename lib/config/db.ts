@@ -13,54 +13,29 @@
 //   }
 // };
 
-// export default connectDB;
 
-// import mongoose from 'mongoose';
 
-// const MONGODB_URI = process.env.MONGODB_URI!;
-
-// if (!MONGODB_URI) {
-//   throw new Error('Please define the MONGODB_URI environment variable');
-// }
-
-// let isConnected = false;
-
-// const connectDB = async () => {
-//   if (isConnected) return;
-
-//   try {
-//     const db = await mongoose.connect(MONGODB_URI);
-//     isConnected = true;
-//     console.log('✅ MongoDB connected');
-//   } catch (error) {
-//     console.error('❌ MongoDB connection error:', error);
-//     throw error;
-//   }
-// };
-
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
+if (!MONGODB_URI) {
+  throw new Error('Please define the MONGODB_URI environment variable');
+}
+
 let isConnected = false;
 
-export default async function connectDB() {
-  if (isConnected) {
-    return;
-  }
-  if (mongoose.connection.readyState >= 1) {
-    isConnected = true;
-    return;
-  }
+const connectDB = async () => {
+  if (isConnected) return;
+
   try {
-    await mongoose.connect(MONGODB_URI, {
-      // useNewUrlParser: true, // not needed in Mongoose 6+
-      // useUnifiedTopology: true, // not needed in Mongoose 6+
-    });
+    const db = await mongoose.connect(MONGODB_URI);
     isConnected = true;
-    console.log("✅ MongoDB connected");
+    console.log('✅ MongoDB connected');
   } catch (error) {
-    console.error("MongoDB connection error:", error);
+    console.error('❌ MongoDB connection error:', error);
     throw error;
   }
-}
+};
+export default connectDB;
+
