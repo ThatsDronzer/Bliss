@@ -21,9 +21,8 @@ export interface IVendor extends Document {
   ownerEmail: string;
   // ownerImage: {
   //   // data: Buffer;
-  //   // contentType: string;
-
-    
+  //   // contentType: string;images: {
+  //   url: string;
   // };
   ownerImage: string;
 }
@@ -90,8 +89,7 @@ const vendorSchema = new Schema<IVendor>({
     type: Boolean,
     default: false,
   },
- 
 });
 
-const Vendor = mongoose.models?.Vendor || model<IVendor>('Vendor', vendorSchema);
+const Vendor = mongoose.models.Vendor || model<IVendor>('Vendor', vendorSchema);
 export default Vendor;
