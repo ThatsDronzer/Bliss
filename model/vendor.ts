@@ -19,7 +19,9 @@ export interface IVendor extends Document {
   ownerName: string;
   owner_contactNo: string[];
   ownerEmail: string;
+  listings: mongoose.Schema.Types.ObjectId[]; // Added listings field
   // ownerImage: {
+ 
   //   // data: Buffer;
   //   // contentType: string;images: {
   //   url: string;
@@ -89,6 +91,12 @@ const vendorSchema = new Schema<IVendor>({
     type: Boolean,
     default: false,
   },
+  listings: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Listing',
+    },
+  ], // Added listings field to schema
 });
 
 const Vendor = mongoose.models.Vendor || model<IVendor>('Vendor', vendorSchema);
