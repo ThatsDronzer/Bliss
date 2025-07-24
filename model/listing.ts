@@ -13,6 +13,7 @@ export interface IListing extends Document {
   ratings: Types.ObjectId[];
   location: string;
   owner: Types.ObjectId;
+  reviews: Types.ObjectId[]; // Optional field for reviews
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -74,6 +75,12 @@ const listingSchema = new Schema<IListing>(
       type: String,
       required: true,
     },
+    reviews: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Review',
+      },
+    ],
 
     owner: {
       type: Schema.Types.ObjectId,
