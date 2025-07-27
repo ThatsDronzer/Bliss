@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    const { title, description, price, features, location } = body;
+    const { title, description, price, features, location, category } = body;
 
     const vendor = await Vendor.findOne({ clerkId: userId });
 
@@ -72,6 +72,7 @@ export async function POST(req: NextRequest) {
       price,
       features,
       location,
+      category,
       owner: vendor._id, // Use the vendor's ID as the owner
     });
     await newListing.save();
@@ -113,7 +114,7 @@ export async function PUT(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { listingId, title, description, price, features, location } = body;
+    const { listingId, title, description, price, location, category } = body;
 
     const listing = await Listing.findById(listingId);
     if (!listing) {
@@ -124,8 +125,8 @@ export async function PUT(req: NextRequest) {
     listing.title = title || listing.title;
     listing.description = description || listing.description;
     listing.price = price || listing.price;
-    listing.features = features || listing.features;
     listing.location = location || listing.location;
+    listing.category = category || listing.category;
 
     await listing.save();
 
