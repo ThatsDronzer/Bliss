@@ -9,10 +9,15 @@ export interface IListing extends Document {
     // filename: string;
   }[];
   isActive: boolean;
-  features: string[];
+  features?: string[];
   ratings: Types.ObjectId[];
   location: string;
   owner: Types.ObjectId;
+<<<<<<< Updated upstream
+  reviews: Types.ObjectId[]; // Optional field for reviews
+=======
+  category: string;
+>>>>>>> Stashed changes
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -47,7 +52,7 @@ const listingSchema = new Schema<IListing>(
       // {
       //   url:"https://images.pexels.com/photos/2747449/pexels-photo-2747449.jpeg?cs=srgb&dl=pexels-wolfgang-1002140-2747449.jpg&fm=jpg"
       // }
-       {
+      {
         url: { type: String, required: true }, // Explicitly define the type as String
         // filename: { type: String, required: true }, // Uncomment this if you intend to use filename
       },
@@ -74,6 +79,32 @@ const listingSchema = new Schema<IListing>(
       type: String,
       required: true,
     },
+<<<<<<< Updated upstream
+    reviews: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Review',
+      },
+    ],
+=======
+    category: {
+      type: String,
+      required: true,
+      enum: [
+        "Wedding Venue",
+        "Photography",
+        "Catering",
+        "Decoration",
+        "Music & DJ",
+        "Transportation",
+        "Beauty & Makeup",
+        "Florist",
+        "Wedding Planner",
+        "Other",
+      ]
+    },
+
+>>>>>>> Stashed changes
 
     owner: {
       type: Schema.Types.ObjectId,

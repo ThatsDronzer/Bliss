@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { ArrowLeft, Upload, Plus, X } from "lucide-react"
 
-import { useAuth, useUser } from "@clerk/nextjs"
+import { useAuth, useSession, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -16,8 +16,11 @@ import { toast } from "@/components/ui/use-toast"
 
 export default function EditListingPage() {
   const router = useRouter()
+    const { session } = useSession();
+  const [token, setToken] = useState<string | null>(null)
   const params = useParams()
   const { isLoaded, isSignedIn } = useAuth();
+  
   const { user } = useUser();
   const userRole = user?.unsafeMetadata?.role as string || "user";
   const [isLoading, setIsLoading] = useState(false)
@@ -27,9 +30,9 @@ export default function EditListingPage() {
     category: "",
     price: "",
     location: "",
-    capacity: "",
+    // capacity: "",
     images: [] as string[],
-    terms: [] as string[],
+    // terms: [] as string[],
   })
   const [newTerm, setNewTerm] = useState("")
 
@@ -43,6 +46,42 @@ export default function EditListingPage() {
   if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null;
   }
+  useEffect(() => {
+    const fetchToken = async () => {
+      if (session) {
+        const userToken = await session.getToken();
+        setToken(userToken);
+      }
+    };
+    fetchToken();
+  }, [session]);
+
+ useEffect(() => {
+    async function fetchListing() {
+      try {
+        const res = await fetch(`/api/listing/${params.id}`);
+        const data = await res.json();
+        const listing = data.listing;
+
+        setFormData({
+          title: listing.title || "",
+          description: listing.description || "",
+          category: listing.category || "",
+          price: listing.price || "",
+          location: listing.location || "",
+          // capacity: listing.capacity || "",
+          images: listing.images || [],  
+          // terms: listing.terms || [],
+        });
+      } catch (err) {
+        console.error("Failed to fetch listing:", err);
+      }
+    }
+
+    if (params?.id) {
+      fetchListing();
+    }
+  }, [params?.id]);
 
   const categories = [
     "Wedding Venue",
@@ -61,80 +100,102 @@ export default function EditListingPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleAddTerm = () => {
-    if (newTerm.trim() && !formData.terms.includes(newTerm.trim())) {
-      handleInputChange("terms", [...formData.terms, newTerm.trim()])
-      setNewTerm("")
-    }
-  }
+  // const handleAddTerm = () => {
+  //   if (newTerm.trim() && !formData.terms.includes(newTerm.trim())) {
+  //     handleInputChange("terms", [...formData.terms, newTerm.trim()])
+  //     setNewTerm("")
+  //   }
+  // }
 
-  const handleRemoveTerm = (term: string) => {
-    handleInputChange(
-      "terms",
-      formData.terms.filter((t) => t !== term)
-    )
-  }
+  // const handleRemoveTerm = (term: string) => {
+  //   handleInputChange(
+  //     "terms",
+  //     formData.terms.filter((t) => t !== term)
+  //   )
+  // }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (files) {
-      // For demo purposes, we'll just add placeholder URLs
-      const newImages = Array.from(files).map((file) => `/placeholder.svg?text=${file.name}`)
-      handleInputChange("images", [...formData.images, ...newImages])
-    }
-  }
+  // const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const files = e.target.files
+  //   if (files) {
+  //     // For demo purposes, we'll just add placeholder URLs
+  //     const newImages = Array.from(files).map((file) => `/placeholder.svg?text=${file.name}`)
+  //     handleInputChange("images", [...formData.images, ...newImages])
+  //   }
+  // }
 
-  const handleRemoveImage = (index: number) => {
-    handleInputChange(
-      "images",
-      formData.images.filter((_, i) => i !== index)
-    )
-  }
+  // const handleRemoveImage = (index: number) => {
+  //   handleInputChange(
+  //     "images",
+  //     formData.images.filter((_, i) => i !== index)
+  //   )
+  // }
 
   const validateForm = () => {
     if (!formData.title || !formData.description || !formData.category || !formData.price) {
       return "Please fill in all required fields (Title, Description, Category, Price)"
     }
-    if (formData.terms.length === 0) {
-      return "Please add at least one term or condition"
-    }
+    // if (formData.terms.length === 0) {
+    //   return "Please add at least one term or condition"
+    // }
     return null
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const validationError = validateForm()
-    if (validationError) {
-      toast({
-        title: "Validation Error",
-        description: validationError,
-        variant: "destructive",
-      })
-      return
-    }
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    setIsLoading(true)
 
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      toast({
-        title: "Listing Updated",
-        description: "Your listing has been successfully updated.",
-      })
-
-      router.push("/vendor-dashboard/listings")
-    } catch (err) {
-      toast({
-        title: "Error",
-        description: "An error occurred while updating the listing. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+  const validationError = validateForm();
+  if (validationError) {
+    toast({
+      title: "Validation Error",
+      description: validationError,
+      variant: "destructive",
+    });
+    return;
   }
+
+  setIsLoading(true);
+  
+
+  try {
+
+    const res = await fetch("/api/listing", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // Auth header
+      },
+      body: JSON.stringify({
+        listingId: params.id,
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        price: formData.price,
+        location: formData.location,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to update listing");
+    }
+
+    toast({
+      title: "Listing Updated",
+      description: "Your listing has been successfully updated.",
+    });
+
+    router.push("/vendor-dashboard/listings");
+  } catch (err) {
+    toast({
+      title: "Error",
+      description: "An error occurred while updating the listing.",
+      variant: "destructive",
+    });
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -213,7 +274,7 @@ export default function EditListingPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="capacity">Capacity</Label>
                   <Input
                     id="capacity"
@@ -221,7 +282,7 @@ export default function EditListingPage() {
                     onChange={(e) => handleInputChange("capacity", e.target.value)}
                     placeholder="e.g., 200 guests"
                   />
-                </div>
+                </div> */}
               </div>
 
               <div className="space-y-2">
@@ -252,7 +313,7 @@ export default function EditListingPage() {
                   type="file"
                   multiple
                   accept="image/*"
-                  onChange={handleImageUpload}
+                  // onChange={handleImageUpload}
                   className="hidden"
                   id="image-upload"
                 />
@@ -274,7 +335,7 @@ export default function EditListingPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => handleRemoveImage(index)}
+                        // onClick={() => handleRemoveImage(index)}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
                       >
                         <X className="h-3 w-3" />
@@ -287,7 +348,7 @@ export default function EditListingPage() {
           </Card>
 
           {/* Terms & Conditions */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Terms & Conditions</CardTitle>
               <CardDescription>Add any specific terms or conditions for your service</CardDescription>
@@ -323,7 +384,7 @@ export default function EditListingPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Submit Buttons */}
           <div className="flex gap-4 justify-end">

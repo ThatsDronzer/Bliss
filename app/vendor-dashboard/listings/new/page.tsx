@@ -13,8 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/components/ui/use-toast"
+import { useSession } from '@clerk/clerk-react';
+
 
 export default function NewListingPage() {
+    const { session } = useSession();
+  const [token, setToken] = useState<string | null>(null)
   const router = useRouter()
   const { isSignedIn, isLoaded } = useAuth()
   const { user } = useUser()
@@ -32,6 +36,17 @@ export default function NewListingPage() {
   })
   const [newTerm, setNewTerm] = useState("")
 
+  
+  useEffect(() => {
+    const fetchToken = async () => {
+      if (session) {
+        const userToken = await session.getToken();
+        setToken(userToken);
+      }
+    };
+    fetchToken();
+  }, [session]);
+
   // Redirect if not authenticated or not a vendor
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -40,6 +55,7 @@ export default function NewListingPage() {
       router.push("/")
     }
   }, [isLoaded, isSignedIn, userRole, router])
+
 
   if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null
@@ -102,66 +118,37 @@ export default function NewListingPage() {
     return null
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const validationError = validateForm()
-    if (validationError) {
-      toast({
-        title: "Validation Error",
-        description: validationError,
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsLoading(true)
+ const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const response = await fetch('/api/listing', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`, 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-      // Add the new listing
-      const newListing = {
-        id: `listing-${Date.now()}`,
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        price: formData.price,
-        location: formData.location,
-        capacity: formData.capacity,
-        features: [],
-        image: formData.images[0] || "/placeholder.svg",
-        images: formData.images,
-        terms: formData.terms,
-        status: "Active",
-        createdAt: new Date().toISOString(),
-      }
+      if (!response.ok) throw new Error('Failed to create listing');
 
-      // Assuming addVendorListing is part of useAuth or passed as a prop
-      // For now, we'll just log or simulate adding it to a global state
-      // In a real app, this would be an API call to your backend
-      console.log("Adding new listing:", newListing)
-      // Example: If you have a global state for listings, you'd update it here
-      // setVendorListings(prev => [...prev, newListing]);
-
-      toast({
-        title: "Listing Created",
-        description: "Your new listing has been successfully created.",
-      })
-
-      router.push("/vendor-dashboard/listings")
+      const data = await response.json();
+     
+      toast({ title: "Success", description: "Listing created successfully!" })
+      router.push("/vendor-dashboard")
     } catch (err) {
-      toast({
-        title: "Error",
-        description: "An error occurred while creating the listing. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+        toast({
+          title: "Error",
+          description: (err as Error).message || "Something went wrong",
+          variant: "destructive",
+        })
+      }finally {
+    setIsLoading(false); // ✅ And this
   }
-
-  return (
+    }
+    return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center gap-4 mb-8">
         <Button
@@ -238,7 +225,7 @@ export default function NewListingPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="capacity">Capacity</Label>
                   <Input
                     id="capacity"
@@ -246,7 +233,7 @@ export default function NewListingPage() {
                     onChange={(e) => handleInputChange("capacity", e.target.value)}
                     placeholder="e.g., 200 guests"
                   />
-                </div>
+                </div> */}
               </div>
 
               <div className="space-y-2">
@@ -312,7 +299,7 @@ export default function NewListingPage() {
           </Card>
 
           {/* Terms & Conditions */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Terms & Conditions</CardTitle>
               <CardDescription>Add any specific terms or conditions for your service</CardDescription>
@@ -348,7 +335,7 @@ export default function NewListingPage() {
                 </div>
               )}
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Submit Buttons */}
           <div className="flex gap-4 justify-end">
@@ -366,5 +353,7 @@ export default function NewListingPage() {
         </form>
       </div>
     </div>
-  )
-} 
+  );
+  };
+  
+
