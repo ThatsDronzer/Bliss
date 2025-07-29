@@ -13,11 +13,7 @@ export interface IListing extends Document {
   ratings: Types.ObjectId[];
   location: string;
   owner: Types.ObjectId;
-<<<<<<< Updated upstream
   reviews: Types.ObjectId[]; // Optional field for reviews
-=======
-  category: string;
->>>>>>> Stashed changes
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -79,32 +75,12 @@ const listingSchema = new Schema<IListing>(
       type: String,
       required: true,
     },
-<<<<<<< Updated upstream
     reviews: [
       {
         type: Schema.Types.ObjectId,
         ref: 'Review',
       },
     ],
-=======
-    category: {
-      type: String,
-      required: true,
-      enum: [
-        "Wedding Venue",
-        "Photography",
-        "Catering",
-        "Decoration",
-        "Music & DJ",
-        "Transportation",
-        "Beauty & Makeup",
-        "Florist",
-        "Wedding Planner",
-        "Other",
-      ]
-    },
-
->>>>>>> Stashed changes
 
     owner: {
       type: Schema.Types.ObjectId,
