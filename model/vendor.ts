@@ -19,6 +19,15 @@ export interface IVendor extends Document {
   ownerName: string;
   owner_contactNo: string[];
   ownerEmail: string;
+  description: string; // Added new field
+  established: string; // Added new field
+  website: string; // Added new field
+  status: string; // Added new field (derived from isVerified)
+  joinDate: string; // Added new field
+  rating: number; // Added new field
+  totalBookings: number; // Added new field
+  totalRevenue: string; // Added new field
+  coins: number; // Added new field for wallet balance
   listings: mongoose.Schema.Types.ObjectId[]; // Added listings field
   // ownerImage: {
  
@@ -90,6 +99,51 @@ const vendorSchema = new Schema<IVendor>({
   isVerified: {
     type: Boolean,
     default: false,
+  },
+  description: {
+    type: String,
+    required: false,
+    default: ""
+  },
+  established: {
+    type: String,
+    required: false,
+    default: ""
+  },
+  website: {
+    type: String,
+    required: false,
+    default: ""
+  },
+  status: {
+    type: String,
+    required: false,
+    default: "Not Verified"
+  },
+  joinDate: {
+    type: String,
+    required: false,
+    default: new Date().toISOString().split('T')[0] // Default to current date
+  },
+  rating: {
+    type: Number,
+    required: false,
+    default: 0
+  },
+  totalBookings: {
+    type: Number,
+    required: false,
+    default: 0
+  },
+  totalRevenue: {
+    type: String,
+    required: false,
+    default: "₹0"
+  },
+  coins: {
+    type: Number,
+    required: false,
+    default: 0
   },
   listings: [
     {

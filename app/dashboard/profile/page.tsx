@@ -2,60 +2,123 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Image from "next/image"
-import { Camera, Mail, Phone, MapPin, Calendar, Edit2, Save } from "lucide-react"
-
-import { useAuth, useUser } from "@clerk/nextjs"
+import { Camera, MapPin, Edit2, Save } from "lucide-react"
+import { useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Label } from "@/components/ui/label"
 import { CoinDisplay } from "@/components/ui/coin-display"
+import { toast } from "sonner"
 
 export default function ProfilePage() {
   const router = useRouter()
-  const { user, isAuthenticated, updateProfile } = useAuth()
+  const { user: clerkUser, isLoaded, isSignedIn } = useUser()
   const [isEditing, setIsEditing] = useState(false)
-  // Demo coin amount - replace with actual user coins from backend
-  const [userCoins] = useState(1500)
+  const [userData, setUserData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
-  // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isLoaded) return
+    if (!isSignedIn) {
       router.push("/")
+      return
     }
-  }, [isAuthenticated, router])
 
-  if (!isAuthenticated || !user) {
-    return null
-  }
+    const fetchUserData = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch(`/api/user/${clerkUser.id}`)
+        if (!response.ok) throw new Error('Failed to fetch user data')
+        const data = await response.json()
+        setUserData(data)
+      } catch (error) {
+        console.error("Failed to fetch user data", error)
+        toast.error('Failed to load profile data')
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
-  const [formData, setFormData] = useState({
-    name: user?.name || "John Doe",
-    email: user?.email || "john.doe@example.com",
-    phone: user?.phone || "9876543210",
-    houseNo: user?.houseNo || "123A",
-    areaName: user?.areaName || "Green Park",
-    landmark: user?.landmark || "Near City Mall",
-    postOffice: user?.postOffice || "Central PO",
-    state: user?.state || "Delhi",
-    pin: user?.pin || "110016",
-  })
+    fetchUserData()
+  }, [isLoaded, isSignedIn, clerkUser?.id, router])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
+    
+    // Handle nested address fields
+    if (name.startsWith('address.')) {
+      const field = name.split('.')[1]
+      setUserData((prev: any) => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          [field]: value
+        }
+      }))
+    } else {
+      setUserData((prev: any) => ({ ...prev, [name]: value }))
+    }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    updateProfile(formData)
+ const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  if (!clerkUser?.id || !userData) return
+  
+  setIsLoading(true)
+  try {
+    const response = await fetch(`/api/user/${clerkUser.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: userData.name,
+        phone: userData.phone,
+        address: {
+          State: userData.address?.State || '',
+          City: userData.address?.City || '',
+          location: userData.address?.location || '',
+          pinCode: userData.address?.pinCode || ''
+        }
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || 'Failed to update profile')
+    }
+
+    const updatedData = await response.json()
+    setUserData(updatedData)
     setIsEditing(false)
+    toast.success('Profile updated successfully')
+  } catch (error) {
+    console.error("Update error:", error)
+    toast.error('Failed to update profile')
+  } finally {
+    setIsLoading(false)
+  }
+}
+
+  if (!isLoaded || isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!userData) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center py-8">
+          <h2 className="text-xl font-semibold">No user data found</h2>
+          <p className="text-gray-500 mt-2">We couldn't find any profile information</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -67,10 +130,13 @@ export default function ProfilePage() {
         </div>
         <Button
           variant={isEditing ? "default" : "outline"}
-          onClick={() => setIsEditing(!isEditing)}
+          onClick={() => isEditing ? handleSubmit({ preventDefault: () => {} } as React.FormEvent) : setIsEditing(true)}
           className="mt-4 md:mt-0"
+          disabled={isLoading}
         >
-          {isEditing ? (
+          {isLoading ? (
+            "Processing..."
+          ) : isEditing ? (
             <>
               <Save className="mr-2 h-4 w-4" />
               Save Changes
@@ -85,7 +151,6 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Profile Overview */}
         <Card className="md:col-span-1">
           <CardHeader>
             <CardTitle>Profile Picture</CardTitle>
@@ -94,35 +159,48 @@ export default function ProfilePage() {
           <CardContent className="flex flex-col items-center text-center">
             <div className="relative mb-4">
               <Avatar className="h-32 w-32">
-                <AvatarImage src={user.avatar || "/placeholder.svg"} />
-                <AvatarFallback>{user.name[0]}</AvatarFallback>
+                <AvatarImage src={clerkUser?.imageUrl || "/placeholder.svg"} />
+                <AvatarFallback>
+                  {clerkUser?.firstName?.[0]}
+                  {clerkUser?.lastName?.[0]}
+                </AvatarFallback>
               </Avatar>
               {isEditing && (
-                <Button
-                  size="icon"
-                  variant="outline"
+                <Button 
+                  size="icon" 
+                  variant="outline" 
                   className="absolute bottom-0 right-0 rounded-full"
+                  disabled={isLoading}
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
               )}
             </div>
-            <h3 className="text-lg font-semibold">{user.name}</h3>
-            <p className="text-sm text-gray-500">{user.email}</p>
+            <h3 className="text-lg font-semibold">
+              {userData.name || `${clerkUser?.firstName} ${clerkUser?.lastName}`}
+            </h3>
+            <p className="text-sm text-gray-500">
+              {userData.email || clerkUser?.emailAddresses[0]?.emailAddress}
+            </p>
             <div className="w-full mt-6 space-y-2">
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <MapPin className="h-4 w-4" />
-                <span>Location: {formData.areaName || "No location added"}</span>
+                <span>Role: {userData.role || "user"}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500">
-                <CoinDisplay balance={userCoins} />
+                <CoinDisplay balance={userData.coins || 0} />
                 <span>Available Balance</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>Referral Code: {userData.referralCode || "None"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <span>Status: {userData.userVerified ? "Verified" : "Not Verified"}</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Profile Details Form */}
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
@@ -131,114 +209,55 @@ export default function ProfilePage() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
+                {['name', 'email', 'phone'].map((field) => (
+                  <div className="space-y-2" key={field}>
+                    <Label htmlFor={field}>
+                      {field === 'name' ? 'Full Name' : 
+                       field === 'email' ? 'Email Address' : 
+                       'Phone Number'}
+                    </Label>
+                    <Input
+                      id={field}
+                      name={field}
+                      value={userData[field] || ''}
+                      onChange={handleInputChange}
+                      disabled={!isEditing || field === 'email' || isLoading}
+                    />
+                  </div>
+                ))}
               </div>
-              {/* Separated Address Fields */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="houseNo">House No.</Label>
-                  <Input
-                    id="houseNo"
-                    name="houseNo"
-                    value={formData.houseNo}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="areaName">Area Name</Label>
-                  <Input
-                    id="areaName"
-                    name="areaName"
-                    value={formData.areaName}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="landmark">Landmark</Label>
-                  <Input
-                    id="landmark"
-                    name="landmark"
-                    value={formData.landmark}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="postOffice">Post Office</Label>
-                  <Input
-                    id="postOffice"
-                    name="postOffice"
-                    value={formData.postOffice}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Input
-                    id="state"
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pin">Pin</Label>
-                  <Input
-                    id="pin"
-                    name="pin"
-                    value={formData.pin}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  />
-                </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {['State', 'City', 'location', 'pinCode'].map((field) => (
+                  <div className="space-y-2" key={field}>
+                    <Label htmlFor={`address.${field}`}>
+                      {field === 'pinCode' ? 'PIN Code' : 
+                       field.charAt(0).toUpperCase() + field.slice(1)}
+                    </Label>
+                    <Input
+                      id={`address.${field}`}
+                      name={`address.${field}`}
+                      value={userData.address?.[field] || ''}
+                      onChange={handleInputChange}
+                      disabled={!isEditing || isLoading}
+                    />
+                  </div>
+                ))}
               </div>
-              {isEditing && (
-                <div className="flex justify-end gap-4">
-                  <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Save Changes</Button>
-                </div>
-              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="referralCode">Referral Code</Label>
+                <Input
+                  id="referralCode"
+                  name="referralCode"
+                  value={userData.referralCode || ''}
+                  disabled
+                />
+              </div>
             </form>
           </CardContent>
         </Card>
 
-        {/* Wallet Section */}
         <Card className="md:col-span-3">
           <CardHeader>
             <CardTitle>Wallet</CardTitle>
@@ -246,8 +265,8 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
-              <CoinDisplay balance={userCoins} />
-              <span className="text-lg font-semibold">{userCoins} Coins</span>
+              <CoinDisplay balance={userData.coins || 0} />
+              <span className="text-lg font-semibold">{userData.coins || 0} Coins</span>
             </div>
           </CardContent>
         </Card>

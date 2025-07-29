@@ -12,6 +12,12 @@ export interface IUser extends Document {
   userVerified: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  address: {
+    State: string;
+    City: string;
+    location: string;
+    pinCode: string;
+  };
 }
 
 const userSchema = new Schema<IUser>(
@@ -55,11 +61,18 @@ const userSchema = new Schema<IUser>(
       type: String,
       default: "Nada",
     },
+    address: {
+    State: { type: String, required: false },
+    City: { type: String, required: false },
+    location: { type: String, required: false },
+    pinCode: { type: String, required: false },
+  },
     userVerified: {
       type: Boolean,
       default: false,
     },
   },
+  
   { timestamps: true }
 );
 
