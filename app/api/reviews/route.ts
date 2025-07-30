@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
 
     const review = new Review({
       user: internalUser._id, 
+      listing: listing._id,
       username, 
       comment,
       rating,
@@ -87,77 +88,73 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-// export async function DELETE(req: NextRequest) {
-//   const auth = getAuth(req);
-//   const clerkUserId = auth.userId;
+export async function DELETE(req: NextRequest) {
+  const auth = getAuth(req);
+  const clerkUserId = auth.userId;
 
-//   if (!clerkUserId) {
-//     return NextResponse.json(
-//       { message: "User is not signed in" },
-//       { status: 401 }
-//     );
-//   }
+  if (!clerkUserId) {
+    return NextResponse.json(
+      { message: "User is not signed in" },
+      { status: 401 }
+    );
+  }
 
-//   await connectDB();
+  await connectDB();
 
-//   try {
-//     const body = await req.json();
-//     const { reviewId } = body;
+  try {
+    const body = await req.json();
+    const { reviewId } = body;
 
-//     const review = await Review.findById(reviewId);
-//     if (!review) {
-//       return NextResponse.json(
-//         { message: "Review not found" },
-//         { status: 404 }
-//       );
-//     }
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return NextResponse.json(
+        { message: "Review not found" },
+        { status: 404 }
+      );
+    }
 
-//    const internalUser = await User.findOne({ clerkId: clerkUserId });
-//     if (!internalUser) {
-//       return NextResponse.json(
-//         { message: "Internal user not found" },
-//         { status: 404 }
-//       );
-//     }
-//     if (review.user.toString() !== internalUser._id.toString()) {
-//       return NextResponse.json(
-//         { message: "You can only delete your own reviews" },
-//         { status: 403 }
-//       );
-//     }
+   const internalUser = await User.findOne({ clerkId: clerkUserId });
+    if (!internalUser) {
+      return NextResponse.json(
+        { message: "Internal user not found" },
+        { status: 404 }
+      );
+    }
+    if (review.user.toString() !== internalUser._id.toString()) {
+      return NextResponse.json(
+        { message: "You can only delete your own reviews" },
+        { status: 403 }
+      );
+    }
 
-//     const deleteReviewResult = await review.deleteOne();
-//     // You could also use:
-//     // await Review.deleteOne({ _id: reviewId });
+    const deleteReviewResult = await review.deleteOne();
 
-//     if (deleteReviewResult.deletedCount === 0) {
-//         return NextResponse.json(
-//             { message: "Failed to delete review from the collection" },
-//             { status: 500 }
-//         );
-//     }
+    if (deleteReviewResult.deletedCount === 0) {
+        return NextResponse.json(
+            { message: "Failed to delete review from the collection" },
+            { status: 500 }
+        );
+    }
 
-//     // --- FIX 2: Remove the review ID from the corresponding listing ---
-//     // Use the $pull operator to remove the reviewId from the listing's reviews array
-//     const updateListingResult = await Listing.updateOne(
-//         { _id: review.listing },
-//         { $pull: { reviews: reviewId } }
-//     );
+    const updateListingResult = await Listing.updateOne(
+        { _id: review.listing },
+        { $pull: { reviews: reviewId } }
+    );
     
-//     if (updateListingResult.modifiedCount === 0) {
-//         console.warn(`Review ${reviewId} was deleted, but not found in listing ${review.listing}'s reviews array.`);
-//         // This is a non-critical error, but a good warning to log
-//     }
+    if (updateListingResult.modifiedCount === 0) {
+        console.warn(`Review ${reviewId} was deleted, but not found in listing ${review.listing}'s reviews array.`);
+        
+    }
 
-//     return NextResponse.json(
-//        { message: "Review deleted successfully", deletedReviewId: reviewId },
-//       { status: 200 }
-//     );
-//   } catch (error: any) {
-//     console.error("Error deleting review:", error);
-//     return NextResponse.json(
-//       { message: "Failed to delete review", error: error.message || "Unknown error" },
-//       { status: 500 }
-//     );
-//   }
-// }
+    return NextResponse.json(
+       { message: "Review deleted successfully", deletedReviewId: reviewId },
+      { status: 200 }
+    );
+  } catch (error: any) {
+    console.error("Error deleting review:", error);
+    return NextResponse.json(
+      { message: "Failed to delete review", error: error.message || "Unknown error" },
+      { status: 500 }
+    );
+  }
+}

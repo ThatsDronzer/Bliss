@@ -10,7 +10,6 @@ export interface IListing extends Document {
   }[];
   isActive: boolean;
   features?: string[];
-  ratings: Types.ObjectId[];
   location: string;
   owner: Types.ObjectId;
   reviews: Types.ObjectId[]; // Optional field for reviews
@@ -63,14 +62,6 @@ const listingSchema = new Schema<IListing>(
       type: [String],
       default: [],
     },
-
-    ratings: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Rating',
-      },
-    ],
-
     location: {
       type: String,
       required: true,
