@@ -31,8 +31,7 @@ export async function POST(req: NextRequest) {
    
     const clerkUser = await users.getUser(clerkUserId);
     const username = clerkUser.username || clerkUser.firstName + ' ' + clerkUser.lastName; 
-   
-
+ 
     if (!username ) {
       return NextResponse.json(
         { message: "User profile incomplete. Missing username or email from Clerk." },
@@ -42,6 +41,7 @@ export async function POST(req: NextRequest) {
 
     
     let internalUser = await User.findOne({ clerkId: clerkUserId });
+ 
     if (!internalUser) {
     
     return NextResponse.json(
