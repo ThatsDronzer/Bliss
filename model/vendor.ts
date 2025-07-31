@@ -2,45 +2,61 @@ import mongoose, { Schema, Document, model } from 'mongoose';
 
 export interface IVendor extends Document {
   clerkId: string;
-  vendorId: string;
+
+  //owner related info-
+  ownerName: string;
+  owner_contactNo: string[];
+  ownerEmail: string;
+  ownerImage: string;
+  owner_address: {
+    State: string;
+    City: string;
+    location: string;
+    pinCode: string;
+  };
+  ownerAadhar:string;
+  
+  //Business related info-
   service_name: string;
-  service_Email: string;
-  service_Phone: string;
+  service_email: string;
+  service_phone: string;
   service_address: {
     State: string;
     City: string;
     location: string;
     pinCode: string;
   };
+  service_description:string;
+  establishedYear:string;
+  service_type: string;
   gstNumber: string;
+  panNumber:string;
+
+  
+  // Bank Details
+  bankName: string;
+  accountNumber: string;
+  ifscCode: string;
+  accountHolderName: string;
+
+  
+  listings: mongoose.Schema.Types.ObjectId[]; // Added listings field
+
   createdAt?: Date;
   updatedAt?: Date;
   isVerified: boolean;
-  ownerName: string;
-  owner_contactNo: string[];
-  ownerEmail: string;
-  listings: mongoose.Schema.Types.ObjectId[]; // Added listings field
-  // ownerImage: {
- 
-  //   // data: Buffer;
-  //   // contentType: string;images: {
-  //   url: string;
-  // };
-  ownerImage: string;
 }
 
 const vendorSchema = new Schema<IVendor>({
- clerkId: {
-      type: String,
-      required: true,
-      unique: true,
-    },
-  // vendorId: {
-  //   type: String,
-  //   required: true,
-  //   unique: true,
-  // },
-   ownerName: {
+  clerkId: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+
+  // owner related info-
+
+  ownerName: {
     type: String,
     required: true,
   },
@@ -56,16 +72,28 @@ const vendorSchema = new Schema<IVendor>({
     type: String,
     default:"https://www.emamiltd.in/wp-content/themes/emami/images/Fair-and-Handsome02-mob-new.jpg"
   },
+  owner_address: {
+    State: { type: String, required: false },
+    City: { type: String, required: false },
+    location: { type: String, required: false },
+    pinCode: { type: String, required: false },
+  },
+  ownerAadhar: {
+    type: String,
+    required: true,
+  },
+
+  // Business retaled info------------------------------------
   
   service_name: {
     type: String,
     required: false,
   },
-  service_Email: {
+  service_email: {
     type: String,
     required: false,
   },
-  service_Phone: {
+  service_phone: {
     type: String,
     required: false,
   },
@@ -75,10 +103,55 @@ const vendorSchema = new Schema<IVendor>({
     location: { type: String, required: false },
     pinCode: { type: String, required: false },
   },
+  service_description:{
+    type: String,
+    required: false,
+  },
+  establishedYear:{
+    type: String,
+    required: false,
+  },
+  service_type:{
+    type: String,
+    required: false,
+  },
   gstNumber: {
     type: String,
     required: false,
   },
+  panNumber: {
+    type: String,
+    required: false,
+  },
+
+
+  //Bank related info-----------------------------------
+  bankName:{
+    type: String,
+    required: false,
+  },
+  accountNumber:{
+    type: String,
+    required: false,
+  },
+  ifscCode: {
+    type: String,
+    required: false,
+  },
+  accountHolderName: {
+    type: String,
+    required: false,
+  },
+
+
+
+  listings: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Listing',
+    },
+  ], // Added listings field to schema
+
   createdAt: {
     type: Date,
     default: Date.now,
@@ -91,12 +164,6 @@ const vendorSchema = new Schema<IVendor>({
     type: Boolean,
     default: false,
   },
-  listings: [
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Listing',
-    },
-  ], // Added listings field to schema
 });
 
 const Vendor = mongoose.models.Vendor || model<IVendor>('Vendor', vendorSchema);
