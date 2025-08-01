@@ -3,6 +3,8 @@ import mongoose, { Document, Schema, Types, model } from 'mongoose';
 
 export interface IReview extends Document {
   user: Types.ObjectId;              // Reference to User
+  listing: Types.ObjectId;         // Reference to Listing
+
   username: string;                  // Username of reviewer
   comment: string;                   // Review comment
   rating: number;                    // Rating from 1 to 5
@@ -14,6 +16,11 @@ const reviewSchema = new Schema<IReview>(
     user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
+      required: true,
+    },
+    listing: {
+      type: Schema.Types.ObjectId,
+      ref: 'Listing',
       required: true,
     },
     username: {

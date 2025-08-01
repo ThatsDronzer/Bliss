@@ -80,7 +80,7 @@ const vendorSchema = new Schema<IVendor>({
   },
   ownerAadhar: {
     type: String,
-    required: true,
+    required:false,
   },
 
   // Business retaled info------------------------------------
