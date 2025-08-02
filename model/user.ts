@@ -12,6 +12,14 @@ export interface IUser extends Document {
   userVerified: boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  address?: {
+      houseNo: string;
+      areaName: string;
+      landmark: string;
+      postOffice: string;
+      state: string;
+      pin: string;
+  }    
 }
 
 const userSchema = new Schema<IUser>(
@@ -59,6 +67,14 @@ const userSchema = new Schema<IUser>(
       type: Boolean,
       default: false,
     },
+    address: {
+      houseNo: { type: String, required: false, trim: true, default: "" },
+      areaName: { type: String, required: false, trim: true, default: "" },
+      landmark: { type: String, required: false, trim: true, default: "" },
+      postOffice: { type: String, required: false, trim: true, default: "" },
+      state: { type: String, required: false, trim: true, default: "" },
+      pin: { type: String, required: false, trim: true, default: "" }
+    }
   },
   { timestamps: true }
 );
