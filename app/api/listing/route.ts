@@ -61,11 +61,32 @@ export async function POST(req: NextRequest) {
 
     const { title, description, price, features, location, category } = body;
 
-    const vendor = await Vendor.findOne({ clerkId: userId });
+    let vendor = await Vendor.findOne({ clerkId: userId });
 
     if (!vendor) {
-      return new NextResponse("Invalid owner ID", { status: 404 });
+      // Create vendor record if it doesn't exist
+      vendor = new Vendor({
+        clerkId: userId,
+        ownerName: user.firstName + ' ' + user.lastName || 'Vendor',
+        ownerEmail: user.emailAddresses?.[0]?.emailAddress || 'vendor@example.com',
+        service_name: 'Vendor Service',
+        service_email: user.emailAddresses?.[0]?.emailAddress || 'vendor@example.com',
+        service_phone: '',
+        service_description: '',
+        establishedYear: new Date().getFullYear().toString(),
+        service_type: 'Other',
+        gstNumber: '',
+        panNumber: '',
+        bankName: '',
+        accountNumber: '',
+        ifscCode: '',
+        accountHolderName: '',
+        isVerified: false,
+        listings: [],
+      });
+      await vendor.save();
     }
+    
     const newListing = new Listing({
       title,
       description,

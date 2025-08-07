@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Upload, Plus, X } from "lucide-react"
+import { ArrowLeft, Upload, Plus, X, DollarSign } from "lucide-react"
 
 import { useAuth, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
@@ -14,11 +14,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/components/ui/use-toast"
 import { useSession } from '@clerk/clerk-react';
+import { Badge } from "@/components/ui/badge"
 
+interface Feature {
+  id: string;
+  name: string;
+  price: string;
+  description: string;
+}
 
 export default function NewListingPage() {
     const { session } = useSession();
   const [token, setToken] = useState<string | null>(null)
+  const [tokenLoading, setTokenLoading] = useState(true)
   const router = useRouter()
   const { isSignedIn, isLoaded } = useAuth()
   const { user } = useUser()
@@ -33,19 +41,40 @@ export default function NewListingPage() {
     capacity: "",
     images: [] as string[],
     terms: [] as string[],
+    features: [] as Feature[],
   })
   const [newTerm, setNewTerm] = useState("")
+  const [newFeature, setNewFeature] = useState({
+    name: "",
+    price: "",
+    description: "",
+  })
 
   
   useEffect(() => {
     const fetchToken = async () => {
-      if (session) {
-        const userToken = await session.getToken();
-        setToken(userToken);
+      setTokenLoading(true);
+      try {
+        if (session) {
+          const userToken = await session.getToken();
+          console.log("Token fetched:", userToken ? "Success" : "Failed");
+          setToken(userToken);
+        } else {
+          console.log("No session available");
+        }
+      } catch (error) {
+        console.error("Error fetching token:", error);
+      } finally {
+        setTokenLoading(false);
       }
     };
-    fetchToken();
-  }, [session]);
+    
+    if (isSignedIn && session) {
+      fetchToken();
+    } else {
+      setTokenLoading(false);
+    }
+  }, [session, isSignedIn]);
 
   // Redirect if not authenticated or not a vendor
   useEffect(() => {
@@ -57,8 +86,17 @@ export default function NewListingPage() {
   }, [isLoaded, isSignedIn, userRole, router])
 
 
-  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
-    return null
+  if (!isLoaded || !isSignedIn || userRole !== "vendor" || tokenLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const categories = [
@@ -92,6 +130,48 @@ export default function NewListingPage() {
     )
   }
 
+  const handleAddFeature = () => {
+    if (newFeature.name.trim() && newFeature.price.trim()) {
+      const feature: Feature = {
+        id: Date.now().toString(),
+        name: newFeature.name.trim(),
+        price: newFeature.price.trim(),
+        description: newFeature.description.trim(),
+      }
+      
+      setFormData(prev => ({
+        ...prev,
+        features: [...prev.features, feature]
+      }))
+      
+      setNewFeature({
+        name: "",
+        price: "",
+        description: "",
+      })
+    } else {
+      toast({
+        title: "Validation Error",
+        description: "Please provide feature name and price",
+        variant: "destructive",
+      })
+    }
+  }
+
+  const handleRemoveFeature = (featureId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      features: prev.features.filter(f => f.id !== featureId)
+    }))
+  }
+
+  const handleFeatureInputChange = (field: string, value: string) => {
+    setNewFeature(prev => ({
+      ...prev,
+      [field]: value
+    }))
+  }
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
@@ -112,41 +192,88 @@ export default function NewListingPage() {
     if (!formData.title || !formData.description || !formData.category || !formData.price) {
       return "Please fill in all required fields (Title, Description, Category, Price)"
     }
-    if (formData.terms.length === 0) {
-      return "Please add at least one term or condition"
-    }
     return null
   }
 
  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log("=== FORM SUBMISSION DEBUG ===");
+    console.log("Form submission started");
+    console.log("Form data:", formData);
+    console.log("Token:", token);
+    console.log("Is signed in:", isSignedIn);
+    console.log("User role:", userRole);
+    console.log("Session:", session);
+    
+    // Validate form before submission
+    const validationError = validateForm();
+    if (validationError) {
+      console.log("Validation error:", validationError);
+      toast({
+        title: "Validation Error",
+        description: validationError,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isSignedIn) {
+      console.log("User not signed in");
+      toast({
+        title: "Authentication Error",
+        description: "Please log in to create a listing",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
+      // Prepare the data for API submission
+      const submissionData = {
+        ...formData,
+        price: parseFloat(formData.price) || 0, // Convert price to number
+        features: formData.features, // Use the features array
+        terms: formData.terms || [], // Keep terms separate
+      };
+
+      console.log("Submitting data:", submissionData);
+
       const response = await fetch('/api/listing', {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${token}`, 
           'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submissionData),
       });
 
-      if (!response.ok) throw new Error('Failed to create listing');
+      console.log("Response status:", response.status);
+      console.log("Response headers:", response.headers);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log("Error response:", errorData);
+        throw new Error(errorData.message || 'Failed to create listing');
+      }
 
       const data = await response.json();
+      console.log("Success response:", data);
      
       toast({ title: "Success", description: "Listing created successfully!" })
-      router.push("/vendor-dashboard")
+      router.push("/vendor-dashboard/listings")
     } catch (err) {
+        console.error("Error in handleSubmit:", err);
         toast({
           title: "Error",
           description: (err as Error).message || "Something went wrong",
           variant: "destructive",
         })
-      }finally {
-    setIsLoading(false); // ✅ And this
-  }
+      } finally {
+        setIsLoading(false);
+      }
     }
     return (
     <div className="container mx-auto px-4 py-8">
@@ -293,6 +420,98 @@ export default function NewListingPage() {
                       </button>
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Features & Services */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Features & Services</CardTitle>
+              <CardDescription>Add individual features or services with their prices</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Add New Feature Form */}
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <h4 className="font-medium mb-4">Add New Feature</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="feature-name">Feature Name *</Label>
+                    <Input
+                      id="feature-name"
+                      value={newFeature.name}
+                      onChange={(e) => handleFeatureInputChange("name", e.target.value)}
+                      placeholder="e.g., Photography, Catering, Decoration"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="feature-price">Price *</Label>
+                    <Input
+                      id="feature-price"
+                      value={newFeature.price}
+                      onChange={(e) => handleFeatureInputChange("price", e.target.value)}
+                      placeholder="e.g., ₹10,000 or ₹500 per person"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="feature-description">Description</Label>
+                    <Input
+                      id="feature-description"
+                      value={newFeature.description}
+                      onChange={(e) => handleFeatureInputChange("description", e.target.value)}
+                      placeholder="Brief description of the feature"
+                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddFeature())}
+                    />
+                  </div>
+                </div>
+                <Button 
+                  type="button" 
+                  onClick={handleAddFeature} 
+                  disabled={!newFeature.name.trim() || !newFeature.price.trim()}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add Feature
+                </Button>
+              </div>
+
+              {/* Display Added Features */}
+              {formData.features.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="font-medium">Added Features</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {formData.features.map((feature) => (
+                      <div key={feature.id} className="border rounded-lg p-4 bg-white relative">
+                        <div className="flex justify-between items-start mb-2">
+                          <h5 className="font-medium text-gray-900">{feature.name}</h5>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFeature(feature.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <DollarSign className="h-4 w-4 text-green-600" />
+                          <Badge variant="secondary" className="bg-green-100 text-green-800">
+                            {feature.price}
+                          </Badge>
+                        </div>
+                        {feature.description && (
+                          <p className="text-sm text-gray-600">{feature.description}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {formData.features.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No features added yet. Add your first feature above.</p>
                 </div>
               )}
             </CardContent>

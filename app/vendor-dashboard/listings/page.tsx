@@ -13,6 +13,8 @@ import {
   MapPin,
   Calendar,
   DollarSign,
+  PowerOff,
+  AlertCircle,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useSession } from "@clerk/clerk-react";
+import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
 
 export default function VendorListingsPage() {
   const { session } = useSession();
@@ -42,6 +45,8 @@ export default function VendorListingsPage() {
     inactive: [],
   });
   const [loading, setLoading] = useState(true);
+  const [isVerified, setIsVerified] = useState(false);
+  const [checkingVerification, setCheckingVerification] = useState(true);
   const router = useRouter();
   const { isSignedIn, isLoaded } = useAuth();
   const { user } = useUser();
@@ -79,6 +84,29 @@ export default function VendorListingsPage() {
 
     return formattedDate;
   };
+
+  // Check verification status
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      if (user?.id) {
+        try {
+          const response = await fetch(`/api/vendor-verification?clerkId=${user.id}`);
+          const data = await response.json();
+          if (response.ok) {
+            setIsVerified(data.isVerified);
+          }
+        } catch (error) {
+          console.error('Error checking verification status:', error);
+        } finally {
+          setCheckingVerification(false);
+        }
+      } else {
+        setCheckingVerification(false);
+      }
+    };
+
+    checkVerificationStatus();
+  }, [user?.id]);
 
   // Redirect if not authenticated or not a vendor
   useEffect(() => {
@@ -147,6 +175,41 @@ export default function VendorListingsPage() {
 
   if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null;
+  }
+
+  if (checkingVerification) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Checking verification status...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show verification required message if not verified
+  if (!isVerified) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center">
+            <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mb-4">
+              <AlertCircle className="h-8 w-8 text-yellow-600" />
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Verification Required</h1>
+            <p className="text-gray-600 mb-6">
+              You need to complete your business verification before you can create and manage listings.
+            </p>
+            <Button onClick={() => router.push("/vendor-dashboard/verification")}>
+              Complete Verification
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const listings = listingsData;
@@ -223,7 +286,11 @@ export default function VendorListingsPage() {
 
 
 
-  const ListingCard = ({ listing }: { listing: Listing }) => (
+  const ListingCard = ({ listing }: { listing: Listing }) => {
+    const [openDeactivate, setOpenDeactivate] = useState(false);
+    const [openDelete, setOpenDelete] = useState(false);
+    
+    return (
     <Card className="mb-4">
       <CardHeader>
         <div className="flex items-start justify-between">
@@ -268,10 +335,14 @@ export default function VendorListingsPage() {
             Created: {formatDate(listing.createdAt)}
           </div>
           <div className="flex space-x-2">
-            <Button variant="outline" size="sm">
-              <Eye className="mr-1 h-3 w-3" />
-              View
-            </Button>
+                         <Button 
+               variant="outline" 
+               size="sm"
+               onClick={() => router.push(`/vendor-dashboard/listings/${listing._id}/view`)}
+             >
+               <Eye className="mr-1 h-3 w-3" />
+               View
+             </Button>
             <Button
               variant="outline"
               size="sm"
@@ -282,21 +353,81 @@ export default function VendorListingsPage() {
               <Edit className="mr-1 h-3 w-3" />
               Edit
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 hover:text-red-700"
-              onClick={() => handleDelete(listing._id)}
-            >
-              <Trash2 className="mr-1 h-3 w-3" />
-              Delete
-            </Button>
+            <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-red-600 hover:text-red-700"
+                >
+                  <Trash2 className="mr-1 h-3 w-3" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Listing</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this listing? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => {
+                      setOpenDelete(false);
+                      handleDelete(listing._id);
+                    }}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             
+            {listing.status === "active" && (
+              <AlertDialog open={openDeactivate} onOpenChange={setOpenDeactivate}>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-yellow-600 hover:text-yellow-700"
+                  >
+                    <PowerOff className="mr-1 h-3 w-3" />
+                    Deactivate
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Deactivate Listing</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to deactivate this listing? It will no longer be visible to customers.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        setOpenDeactivate(false);
+                        toast({
+                          title: "Listing deactivated (UI only)",
+                          description: "This is a UI/UX demo. No backend call was made.",
+                        });
+                      }}
+                    >
+                      Deactivate
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
       </CardContent>
     </Card>
-  );
+    );
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -308,13 +439,15 @@ export default function VendorListingsPage() {
             Manage your service listings and packages
           </p>
         </div>
-        <Button
-          className="mt-4 md:mt-0"
-          onClick={() => router.push("/vendor-dashboard/listings/new")}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Add New Listing
-        </Button>
+        {isVerified && (
+          <Button
+            className="mt-4 md:mt-0"
+            onClick={() => router.push("/vendor-dashboard/listings/new")}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add New Listing
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -431,15 +564,17 @@ export default function VendorListingsPage() {
                     <p className="text-gray-500">
                       You don't have any active listings at the moment.
                     </p>
-                    <Button
-                      className="mt-4"
-                      onClick={() =>
-                        router.push("/vendor-dashboard/listings/new")
-                      }
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Your First Listing
-                    </Button>
+                    {isVerified && (
+                      <Button
+                        className="mt-4"
+                        onClick={() =>
+                          router.push("/vendor-dashboard/listings/new")
+                        }
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Your First Listing
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ) : (
