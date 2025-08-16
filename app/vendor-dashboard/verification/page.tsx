@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, CheckCircle, XCircle, Clock, AlertCircle, Building, User, FileText, CreditCard } from "lucide-react"
+import { Upload, CheckCircle, XCircle, Clock, AlertCircle, Building, User, FileText, CreditCard, PlusCircle } from "lucide-react"
 
 import { useAuth, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 
 export default function VendorVerificationPage() {
   const router = useRouter()
@@ -22,6 +22,7 @@ export default function VendorVerificationPage() {
   const { user } = useUser()
   const userRole = user?.unsafeMetadata?.role as string || "user"
   const [isLoading, setIsLoading] = useState(false)
+  const [isVerified, setIsVerified] = useState(false)
   const [verificationData, setVerificationData] = useState({
     // Business Information
     businessName: "",
@@ -82,6 +83,25 @@ export default function VendorVerificationPage() {
   const [newCertification, setNewCertification] = useState("")
   const [newQualityStandard, setNewQualityStandard] = useState("")
 
+  // Check verification status
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      if (user?.id) {
+        try {
+          const response = await fetch(`/api/vendor-verification?clerkId=${user.id}`)
+          const data = await response.json()
+          if (response.ok) {
+            setIsVerified(data.isVerified)
+          }
+        } catch (error) {
+          console.error('Error checking verification status:', error)
+        }
+      }
+    }
+
+    checkVerificationStatus()
+  }, [user?.id])
+
   // Redirect if not authenticated or not a vendor
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -93,6 +113,46 @@ export default function VendorVerificationPage() {
 
   if (!isLoaded || !isSignedIn || userRole !== "vendor" || !user) {
     return null
+  }
+
+  // Show verified status if vendor is already verified
+  if (isVerified) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <CardTitle className="text-2xl text-green-600">Verification Complete!</CardTitle>
+              <CardDescription>
+                Your business has been successfully verified. You can now create listings and access all vendor features.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <div className="bg-green-50 p-4 rounded-lg">
+                <p className="text-green-800 font-medium">
+                  ✓ Your account is verified and active
+                </p>
+                <p className="text-green-700 text-sm mt-1">
+                  You can now create listings, receive bookings, and manage your business through the vendor dashboard.
+                </p>
+              </div>
+              <div className="flex gap-4 justify-center">
+                <Button onClick={() => router.push("/vendor-dashboard/listings/new")}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Create New Listing
+                </Button>
+                <Button variant="outline" onClick={() => router.push("/vendor-dashboard")}>
+                  Go to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
   }
 
   const businessTypes = [
@@ -186,11 +246,7 @@ export default function VendorVerificationPage() {
       setCurrentStep(currentStep + 1)
       setVerificationStatus(prev => ({ ...prev, [`step${currentStep}`]: true }))
     } else {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields before proceeding.",
-        variant: "destructive",
-      })
+      toast.error("Please fill in all required fields before proceeding.")
     }
   }
 
@@ -202,31 +258,31 @@ const handleSubmitVerification = async () => {
   setIsLoading(true)
 
   try {
+    // Include clerkId in the verification data
+    const submissionData = {
+      ...verificationData,
+      clerkId: user?.id
+    }
+
     const response = await fetch("/api/vendor-verification", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(verificationData),
+      body: JSON.stringify(submissionData),
     })
 
     const result = await response.json()
 
     if (result.success) {
-      toast({
-        title: "Verification Submitted",
-        description: "Your verification documents have been submitted successfully. We'll review them within 3-5 business days.",
-      })
-      router.push("/vendor-dashboard")
+      toast.success("Your verification has been completed successfully. You can now create listings!")
+      setIsVerified(true) // Update local state immediately
     } else {
-      throw new Error(result.message)
+      throw new Error(result.message || result.error)
     }
   } catch (err) {
-    toast({
-      title: "Error",
-      description: "An error occurred while submitting verification. Please try again.",
-      variant: "destructive"
-    })
+    console.error("Verification submission error:", err)
+    toast.error("An error occurred while submitting verification. Please try again.")
   } finally {
     setIsLoading(false)
   }
@@ -680,8 +736,7 @@ const handleSubmitVerification = async () => {
       <Alert className="mt-6">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          <strong>Verification Process:</strong> After submission, our team will review your documents within 3-5 business days. 
-          You'll receive an email notification once the verification is complete.
+          <strong>Verification Process:</strong> Once you submit your verification, your account will be immediately verified and you'll be able to create listings and access all vendor features.
         </AlertDescription>
       </Alert>
     </div>

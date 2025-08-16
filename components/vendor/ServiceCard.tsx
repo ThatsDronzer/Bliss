@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Check } from "lucide-react"
+import Link from 'next/link';
 
 interface Service {
   id: number
@@ -32,11 +33,11 @@ export function ServiceCard({ service, isSelected, onSelect, duration, availabil
                 <span className="ml-2 text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">⏱ {duration}</span>
               )}
             </h3>
-            <Badge variant="secondary" className="bg-gray-100">
+            {/* <Badge variant="secondary" className="bg-gray-100">
               {service.description.length > 30 
                 ? service.description.substring(0, 30) + "..."
                 : service.description}
-            </Badge>
+            </Badge> */}
           </div>
           <span className="text-xl font-bold">₹{service.price}</span>
         </div>
@@ -49,7 +50,7 @@ export function ServiceCard({ service, isSelected, onSelect, duration, availabil
         )}
         <Button 
           variant={isSelected ? "default" : "outline"}
-          className="w-full"
+          className="w-full mb-2"
           onClick={onSelect}
         >
           {isSelected ? (
@@ -61,6 +62,11 @@ export function ServiceCard({ service, isSelected, onSelect, duration, availabil
             'Select Service'
           )}
         </Button>
+        <Link href={`/services/${service.id}`} passHref legacyBehavior>
+          <Button asChild variant="default" className="w-full mt-1">
+            <a>View Service</a>
+          </Button>
+        </Link>
       </CardContent>
     </Card>
   )

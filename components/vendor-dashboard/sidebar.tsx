@@ -2,6 +2,8 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useUser } from "@clerk/nextjs"
 import {
   LayoutDashboard,
   Calendar,
@@ -65,6 +67,27 @@ export function VendorDashboardSidebar() {
   const pathname = usePathname()
   const { signOut } = useClerk()
   const router = useRouter()
+  const { user } = useUser()
+  const [isVerified, setIsVerified] = useState(false)
+
+  // Check verification status
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      if (user?.id) {
+        try {
+          const response = await fetch(`/api/vendor-verification?clerkId=${user.id}`)
+          const data = await response.json()
+          if (response.ok) {
+            setIsVerified(data.isVerified)
+          }
+        } catch (error) {
+          console.error('Error checking verification status:', error)
+        }
+      }
+    }
+
+    checkVerificationStatus()
+  }, [user?.id])
 
   const handleSignOut = async () => {
     await signOut()
@@ -91,14 +114,17 @@ export function VendorDashboardSidebar() {
           </Link>
         ))}
 
-        <div className="mt-4 pt-4 border-t">
-          <Link href="/vendor-dashboard/listings/new">
-            <Button className="w-full justify-start" variant="outline">
-              <PlusCircle className="w-5 h-5 mr-2" />
-              Add New Listing
-            </Button>
-          </Link>
-        </div>
+        {/* Only show Add New Listing button if vendor is verified */}
+        {isVerified && (
+          <div className="mt-4 pt-4 border-t">
+            <Link href="/vendor-dashboard/listings/new">
+              <Button className="w-full justify-start" variant="outline">
+                <PlusCircle className="w-5 h-5 mr-2" />
+                Add New Listing
+              </Button>
+            </Link>
+          </div>
+        )}
       </div>
       <div className="mt-auto p-4 border-t">
         <Button variant="destructive" className="w-full" onClick={handleSignOut}>

@@ -5,9 +5,8 @@ import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { users } from "@clerk/clerk-sdk-node";
 import cloudinary from "@/lib/cloudinary";
-
 import type { NextRequest } from "next/server";
-//send session id of clerk in headers for both requests by window.Clerk.session.getToken().then(console.log)
+
 export async function GET(req: NextRequest) {
   const auth = getAuth(req);
   const userId = auth.userId;
@@ -32,12 +31,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ listings }, { status: 200 });
 }
 
-
-
 export async function POST(req: NextRequest) {
   const auth = getAuth(req);
-  const userId = auth.userId;// In your API route
- 
+  const userId = auth.userId;
 
   if (!userId) {
     return NextResponse.json(
@@ -160,6 +156,7 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 export async function PUT(req: NextRequest) {
   const auth = getAuth(req);
   const userId = auth.userId;
@@ -214,7 +211,7 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  await connectDB(); // Ensure DB connection
+  await connectDB();
 
   try {
     const body = await req.json();
@@ -227,14 +224,13 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-
     // Find the listing to ensure it exists and belongs to the current vendor
     const listing = await Listing.findById(listingId);
     if (!listing) {
       return NextResponse.json({ message: "Listing not found" }, { status: 404 });
     }
 
-    //  Find the vendor by Clerk ID
+    // Find the vendor by Clerk ID
     const vendor = await Vendor.findOne({ clerkId: userId });
     if (!vendor) {
       return NextResponse.json({ message: "Vendor not found" }, { status: 404 });
@@ -246,33 +242,27 @@ export async function DELETE(req: NextRequest) {
         { status: 403 }
       );
     }
-     // First delete images from Cloudinary
-    await Promise.all(
-      listing.images.map(async (image: { public_id: string; url?: string }) => {
-        await cloudinary.uploader.destroy(image.public_id);
-      })
-    );
 
-
-    // Remove the listing from the database using deleteOne
-    const deleteResult = await Listing.deleteOne({ _id: listingId });
-    if (deleteResult.deletedCount === 0) {
-
-      return NextResponse.json({ message: "Failed to delete listing from collection" }, { status: 500 });
+    // First delete images from Cloudinary
+    if (listing.images && listing.images.length > 0) {
+      await Promise.all(
+        listing.images.map(async (image: any) => {
+          if (image.public_id) {
+            await cloudinary.uploader.destroy(image.public_id);
+          }
+        })
+      );
     }
 
-    //  Remove the listing ID from the vendor's listings array using $pull
-    const updateVendorResult = await Vendor.updateOne(
+    // Remove the listing from the database
+    await Listing.deleteOne({ _id: listingId });
+
+    // Remove the listing ID from the vendor's listings array
+    await Vendor.updateOne(
       { _id: vendor._id },
       { $pull: { listings: listingId } }
     );
 
-    if (updateVendorResult.modifiedCount === 0) {
-      console.warn(`Listing ${listingId} was deleted, but not found in vendor ${vendor._id}'s listings array.`);
-
-    }
-
-    // Return a success response
     return NextResponse.json(
       { message: "Listing deleted successfully", deletedListingId: listingId },
       { status: 200 }
