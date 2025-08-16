@@ -4,6 +4,7 @@ import Vendor from "@/model/vendor";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { users } from "@clerk/clerk-sdk-node";
+import cloudinary from "@/lib/cloudinary";
 
 import type { NextRequest } from "next/server";
 //send session id of clerk in headers for both requests by window.Clerk.session.getToken().then(console.log)
@@ -31,10 +32,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ listings }, { status: 200 });
 }
 
+
+
 export async function POST(req: NextRequest) {
   const auth = getAuth(req);
-
-  const userId = auth.userId;
+  const userId = auth.userId;// In your API route
+ 
 
   if (!userId) {
     return NextResponse.json(
@@ -44,7 +47,6 @@ export async function POST(req: NextRequest) {
   }
 
   const user = await users.getUser(userId);
-
   const role = user.unsafeMetadata?.role;
 
   if (role !== "vendor") {
@@ -57,44 +59,103 @@ export async function POST(req: NextRequest) {
   await connectDB();
 
   try {
-    const body = await req.json();
+    const formData = await req.formData();
 
-    const { title, description, price, features, location, category } = body;
+    // Get all images from form data (supports multiple files)
+    const imageFiles = formData.getAll('images') as File[];
+    const uploadedImages = [];
 
-    const vendor = await Vendor.findOne({ clerkId: userId });
+    // Upload each image to Cloudinary
+    for (const file of imageFiles) {
+      if (file.size > 0) { // Check if file exists
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
 
-    if (!vendor) {
-      return new NextResponse("Invalid owner ID", { status: 404 });
+        const uploadResult: any = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            {
+              folder: 'listings',
+              transformation: [
+                { width: 800, height: 800, crop: 'limit' },
+                { quality: 'auto' }
+              ]
+            },
+            (error, result) => {
+              if (error) reject(error);
+              resolve(result);
+            }
+          ).end(buffer);
+        });
+
+        uploadedImages.push({
+          url: uploadResult.secure_url,
+          public_id: uploadResult.public_id
+        });
+      }
     }
+
+    // Create vendor if doesn't exist
+    let vendor = await Vendor.findOne({ clerkId: userId });
+    if (!vendor) {
+      vendor = new Vendor({
+        clerkId: userId,
+        ownerName: user.firstName + ' ' + user.lastName || 'Vendor',
+        ownerEmail: user.emailAddresses?.[0]?.emailAddress || 'vendor@example.com',
+        service_name: 'Vendor Service',
+        service_email: user.emailAddresses?.[0]?.emailAddress || 'vendor@example.com',
+        service_phone: '',
+        service_description: '',
+        establishedYear: new Date().getFullYear().toString(),
+        service_type: 'Other',
+        gstNumber: '',
+        panNumber: '',
+        bankName: '',
+        accountNumber: '',
+        ifscCode: '',
+        accountHolderName: '',
+        isVerified: false,
+        listings: [],
+      });
+      await vendor.save();
+    }
+
+    // Create new listing with uploaded images
     const newListing = new Listing({
-      title,
-      description,
-      price,
-      features,
-      location,
-      category,
-      owner: vendor._id, // Use the vendor's ID as the owner
+      title: formData.get('title'),
+      description: formData.get('description'),
+      price: formData.get('price'),
+      location: formData.get('location'),
+      category: formData.get('category'),
+      features: formData.get('features') ? JSON.parse(formData.get('features') as string) : [],
+      images: uploadedImages,
+      owner: vendor._id,
     });
+
     await newListing.save();
 
+    // Update vendor's listings
     if (!Array.isArray(vendor.listings)) {
       vendor.listings = [];
     }
-
-   
-    await vendor.listings.push(newListing._id);
-
-    vendor.markModified("listings");
-
+    vendor.listings.push(newListing._id);
     await vendor.save();
 
     return NextResponse.json(
-      { message: "Listing created successfully", listing: newListing },
+      {
+        message: "Listing created successfully",
+        listing: newListing
+      },
       { status: 201 }
     );
+
   } catch (error: any) {
+    console.error("Error creating listing:", error);
     return NextResponse.json(
-      { message: "Failed to create listing", error: error.message },
+      {
+        message: "Failed to create listing",
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      },
       { status: 500 }
     );
   }
@@ -166,7 +227,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-   
+
     // Find the listing to ensure it exists and belongs to the current vendor
     const listing = await Listing.findById(listingId);
     if (!listing) {
@@ -185,23 +246,30 @@ export async function DELETE(req: NextRequest) {
         { status: 403 }
       );
     }
+     // First delete images from Cloudinary
+    await Promise.all(
+      listing.images.map(async (image: { public_id: string; url?: string }) => {
+        await cloudinary.uploader.destroy(image.public_id);
+      })
+    );
+
 
     // Remove the listing from the database using deleteOne
     const deleteResult = await Listing.deleteOne({ _id: listingId });
     if (deleteResult.deletedCount === 0) {
-      
+
       return NextResponse.json({ message: "Failed to delete listing from collection" }, { status: 500 });
     }
 
     //  Remove the listing ID from the vendor's listings array using $pull
     const updateVendorResult = await Vendor.updateOne(
       { _id: vendor._id },
-      { $pull: { listings: listingId } } 
+      { $pull: { listings: listingId } }
     );
 
     if (updateVendorResult.modifiedCount === 0) {
       console.warn(`Listing ${listingId} was deleted, but not found in vendor ${vendor._id}'s listings array.`);
-      
+
     }
 
     // Return a success response
@@ -210,7 +278,7 @@ export async function DELETE(req: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error("Error deleting listing:", error); 
+    console.error("Error deleting listing:", error);
     return NextResponse.json(
       { message: "Failed to delete listing", error: error.message },
       { status: 500 }
