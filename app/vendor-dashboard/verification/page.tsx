@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, CheckCircle, XCircle, Clock, AlertCircle, Building, User, FileText, CreditCard } from "lucide-react"
+import { Upload, CheckCircle, XCircle, Clock, AlertCircle, Building, User, FileText, CreditCard, PlusCircle } from "lucide-react"
 
 import { useAuth, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 
 export default function VendorVerificationPage() {
   const router = useRouter()
@@ -22,44 +22,53 @@ export default function VendorVerificationPage() {
   const { user } = useUser()
   const userRole = user?.unsafeMetadata?.role as string || "user"
   const [isLoading, setIsLoading] = useState(false)
+  const [isVerified, setIsVerified] = useState(false)
   const [verificationData, setVerificationData] = useState({
-    // Owner Information (matches schema)
-    ownerName: "",
-    owner_contactNo: [] as string[],
-    ownerEmail: "",
-    ownerImage: "",
-    owner_address: {
-      State: "",
-      City: "",
-      location: "",
-      pinCode: ""
-    },
-    ownerAadhar: "",
-    
-    // Business Information (matches schema)
-    service_name: "",
-    service_email: "",
-    service_phone: "",
-    service_address: {
-      State: "",
-      City: "",
-      location: "",
-      pinCode: ""
-    },
-    service_description: "",
+    // Business Information
+    businessName: "",
+    businessType: "",
+    businessAddress: "",
+    businessCity: "",
+    businessState: "",
+    businessPincode: "",
+    businessPhone: "",
+    businessEmail: "",
+    businessWebsite: "",
+    businessDescription: "",
     establishedYear: "",
-    service_type: "",
     gstNumber: "",
     panNumber: "",
     
-    // Bank Details (matches schema)
+    // Owner Information
+    ownerName: "",
+    ownerEmail: "",
+    ownerPhone: "",
+    ownerCity: "",
+    ownerState: "",
+    ownerPincode: "",
+    ownerAadhar: "",
+    
+    // Bank Details
     bankName: "",
     accountNumber: "",
     ifscCode: "",
     accountHolderName: "",
     
-    // UI helpers for contact numbers
-    tempContactNumber: "",
+    // Documents
+    businessLicense: null as File | null,
+    gstCertificate: null as File | null,
+    panCard: null as File | null,
+    aadharCard: null as File | null,
+    bankStatement: null as File | null,
+    addressProof: null as File | null,
+    
+    // Additional Information
+    serviceCategories: [] as string[],
+    teamSize: "",
+    annualRevenue: "",
+    certifications: [] as string[],
+    insuranceDetails: "",
+    qualityStandards: [] as string[],
   })
   
   const [verificationStatus, setVerificationStatus] = useState({
@@ -71,6 +80,27 @@ export default function VendorVerificationPage() {
   })
   
   const [currentStep, setCurrentStep] = useState(1)
+  const [newCertification, setNewCertification] = useState("")
+  const [newQualityStandard, setNewQualityStandard] = useState("")
+
+  // Check verification status
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      if (user?.id) {
+        try {
+          const response = await fetch(`/api/vendor-verification?clerkId=${user.id}`)
+          const data = await response.json()
+          if (response.ok) {
+            setIsVerified(data.isVerified)
+          }
+        } catch (error) {
+          console.error('Error checking verification status:', error)
+        }
+      }
+    }
+
+    checkVerificationStatus()
+  }, [user?.id])
 
   // Redirect if not authenticated or not a vendor
   useEffect(() => {
@@ -85,9 +115,60 @@ export default function VendorVerificationPage() {
     return null
   }
 
-  const serviceTypes = [
+  // Show verified status if vendor is already verified
+  if (isVerified) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <CardTitle className="text-2xl text-green-600">Verification Complete!</CardTitle>
+              <CardDescription>
+                Your business has been successfully verified. You can now create listings and access all vendor features.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <div className="bg-green-50 p-4 rounded-lg">
+                <p className="text-green-800 font-medium">
+                  ✓ Your account is verified and active
+                </p>
+                <p className="text-green-700 text-sm mt-1">
+                  You can now create listings, receive bookings, and manage your business through the vendor dashboard.
+                </p>
+              </div>
+              <div className="flex gap-4 justify-center">
+                <Button onClick={() => router.push("/vendor-dashboard/listings/new")}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Create New Listing
+                </Button>
+                <Button variant="outline" onClick={() => router.push("/vendor-dashboard")}>
+                  Go to Dashboard
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  const businessTypes = [
+    "Sole Proprietorship",
+    "Partnership",
+    "Private Limited Company",
+    "Public Limited Company",
+    "LLP (Limited Liability Partnership)",
+    "Trust",
+    "Society",
+    "Other",
+  ]
+
+  const serviceCategories = [
     "Wedding Venue",
-    "Photography & Videography", 
+    "Photography & Videography",
     "Catering Services",
     "Decoration & Florist",
     "Music & Entertainment",
@@ -99,56 +180,62 @@ export default function VendorVerificationPage() {
     "Other",
   ]
 
-  const handleInputChange = (field: string, value: any) => {
-    if (field.includes('.')) {
-      const [parent, child] = field.split('.')
-      setVerificationData((prev) => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent as keyof typeof prev] as any,
-          [child]: value
-        }
-      }))
-    } else {
-      setVerificationData((prev) => ({ ...prev, [field]: value }))
+  const qualityStandards = [
+    "ISO 9001",
+    "ISO 14001",
+    "FSSAI License",
+    "Fire Safety Certificate",
+    "Municipal License",
+    "Professional Association Membership",
+    "Other",
+  ]
+
+  const handleInputChange = (field: string, value: string | string[]) => {
+    setVerificationData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleFileUpload = (field: string, file: File | null) => {
+    setVerificationData((prev) => ({ ...prev, [field]: file }))
+  }
+
+  const handleAddCertification = () => {
+    if (newCertification.trim() && !verificationData.certifications.includes(newCertification.trim())) {
+      handleInputChange("certifications", [...verificationData.certifications, newCertification.trim()])
+      setNewCertification("")
     }
   }
 
-  const handleAddContactNumber = () => {
-    if (verificationData.tempContactNumber.trim() && 
-        !verificationData.owner_contactNo.includes(verificationData.tempContactNumber.trim())) {
-      setVerificationData(prev => ({
-        ...prev,
-        owner_contactNo: [...prev.owner_contactNo, prev.tempContactNumber.trim()],
-        tempContactNumber: ""
-      }))
+  const handleRemoveCertification = (certification: string) => {
+    handleInputChange(
+      "certifications",
+      verificationData.certifications.filter((c) => c !== certification)
+    )
+  }
+
+  const handleAddQualityStandard = () => {
+    if (newQualityStandard.trim() && !verificationData.qualityStandards.includes(newQualityStandard.trim())) {
+      handleInputChange("qualityStandards", [...verificationData.qualityStandards, newQualityStandard.trim()])
+      setNewQualityStandard("")
     }
   }
 
-  const handleRemoveContactNumber = (contact: string) => {
-    setVerificationData(prev => ({
-      ...prev,
-      owner_contactNo: prev.owner_contactNo.filter(c => c !== contact)
-    }))
+  const handleRemoveQualityStandard = (standard: string) => {
+    handleInputChange(
+      "qualityStandards",
+      verificationData.qualityStandards.filter((s) => s !== standard)
+    )
   }
 
   const validateStep = (step: number) => {
     switch (step) {
       case 1: // Business Information
-        return verificationData.service_name && 
-               verificationData.service_type && 
-               verificationData.service_address.location
+        return verificationData.businessName && verificationData.businessType && verificationData.businessAddress
       case 2: // Owner Information
-        return verificationData.ownerName && 
-               verificationData.ownerEmail && 
-               verificationData.owner_contactNo.length > 0
+        return verificationData.ownerName && verificationData.ownerEmail && verificationData.ownerPhone
       case 3: // Bank Details
-        return verificationData.bankName && 
-               verificationData.accountNumber && 
-               verificationData.ifscCode &&
-               verificationData.accountHolderName
+        return verificationData.bankName && verificationData.accountNumber && verificationData.ifscCode
       case 4: // Review & Submit
-        return true
+        return true // Always allow submission on review step
       default:
         return false
     }
@@ -159,11 +246,7 @@ export default function VendorVerificationPage() {
       setCurrentStep(currentStep + 1)
       setVerificationStatus(prev => ({ ...prev, [`step${currentStep}`]: true }))
     } else {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields before proceeding.",
-        variant: "destructive",
-      })
+      toast.error("Please fill in all required fields before proceeding.")
     }
   }
 
@@ -171,64 +254,40 @@ export default function VendorVerificationPage() {
     setCurrentStep(currentStep - 1)
   }
 
-  const handleSubmitVerification = async () => {
-    setIsLoading(true)
+const handleSubmitVerification = async () => {
+  setIsLoading(true)
 
-    try {
-      // Prepare data to match schema structure
-      const submitData = {
-        clerkId: user.id,
-        ownerName: verificationData.ownerName,
-        owner_contactNo: verificationData.owner_contactNo,
-        ownerEmail: verificationData.ownerEmail,
-        ownerImage: verificationData.ownerImage || "https://www.emamiltd.in/wp-content/themes/emami/images/Fair-and-Handsome02-mob-new.jpg",
-        owner_address: verificationData.owner_address,
-        ownerAadhar: verificationData.ownerAadhar,
-        service_name: verificationData.service_name,
-        service_email: verificationData.service_email,
-        service_phone: verificationData.service_phone,
-        service_address: verificationData.service_address,
-        service_description: verificationData.service_description,
-        establishedYear: verificationData.establishedYear,
-        service_type: verificationData.service_type,
-        gstNumber: verificationData.gstNumber,
-        panNumber: verificationData.panNumber,
-        bankName: verificationData.bankName,
-        accountNumber: verificationData.accountNumber,
-        ifscCode: verificationData.ifscCode,
-        accountHolderName: verificationData.accountHolderName,
-      }
-
-      const response = await fetch("/api/vendor-verification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(submitData),
-      })
-
-      const result = await response.json()
-
-      if (result.success) {
-        toast({
-          title: "Verification Submitted",
-          description: "Your verification documents have been submitted successfully. We'll review them within 3-5 business days.",
-        })
-        router.push("/vendor-dashboard")
-      } else {
-        throw new Error(result.error || "Submission failed")
-      }
-    } catch (err) {
-      console.error("Verification submission error:", err)
-      toast({
-        title: "Error",
-        description: "An error occurred while submitting verification. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsLoading(false)
+  try {
+    // Include clerkId in the verification data
+    const submissionData = {
+      ...verificationData,
+      clerkId: user?.id
     }
+
+    const response = await fetch("/api/vendor-verification", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(submissionData),
+    })
+
+    const result = await response.json()
+
+    if (result.success) {
+      toast.success("Your verification has been completed successfully. You can now create listings!")
+      setIsVerified(true) // Update local state immediately
+    } else {
+      throw new Error(result.message || result.error)
+    }
+  } catch (err) {
+    console.error("Verification submission error:", err)
+    toast.error("An error occurred while submitting verification. Please try again.")
+  } finally {
+    setIsLoading(false)
   }
+}
+
 
   const getStepStatus = (step: number) => {
     if (currentStep > step) return "completed"
@@ -240,24 +299,24 @@ export default function VendorVerificationPage() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
-          <Label htmlFor="service_name">Business/Service Name *</Label>
+          <Label htmlFor="businessName">Business Name *</Label>
           <Input
-            id="service_name"
-            value={verificationData.service_name}
-            onChange={(e) => handleInputChange("service_name", e.target.value)}
-            placeholder="Enter your business/service name"
+            id="businessName"
+            value={verificationData.businessName}
+            onChange={(e) => handleInputChange("businessName", e.target.value)}
+            placeholder="Enter your business name"
             required
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="service_type">Service Type *</Label>
-          <Select value={verificationData.service_type} onValueChange={(value) => handleInputChange("service_type", value)}>
+          <Label htmlFor="businessType">Business Type *</Label>
+          <Select value={verificationData.businessType} onValueChange={(value) => handleInputChange("businessType", value)}>
             <SelectTrigger>
-              <SelectValue placeholder="Select service type" />
+              <SelectValue placeholder="Select business type" />
             </SelectTrigger>
             <SelectContent>
-              {serviceTypes.map((type) => (
+              {businessTypes.map((type) => (
                 <SelectItem key={type} value={type}>
                   {type}
                 </SelectItem>
@@ -297,33 +356,23 @@ export default function VendorVerificationPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="service_phone">Business Phone</Label>
+          <Label htmlFor="businessPhone">Business Phone *</Label>
           <Input
-            id="service_phone"
-            value={verificationData.service_phone}
-            onChange={(e) => handleInputChange("service_phone", e.target.value)}
+            id="businessPhone"
+            value={verificationData.businessPhone}
+            onChange={(e) => handleInputChange("businessPhone", e.target.value)}
             placeholder="+91 98765 43210"
+            required
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="service_email">Business Email</Label>
-        <Input
-          id="service_email"
-          type="email"
-          value={verificationData.service_email}
-          onChange={(e) => handleInputChange("service_email", e.target.value)}
-          placeholder="business@example.com"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="service_address_location">Business Address *</Label>
+        <Label htmlFor="businessAddress">Business Address *</Label>
         <Textarea
-          id="service_address_location"
-          value={verificationData.service_address.location}
-          onChange={(e) => handleInputChange("service_address.location", e.target.value)}
+          id="businessAddress"
+          value={verificationData.businessAddress}
+          onChange={(e) => handleInputChange("businessAddress", e.target.value)}
           placeholder="Enter complete business address"
           rows={3}
           required
@@ -332,42 +381,42 @@ export default function VendorVerificationPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="space-y-2">
-          <Label htmlFor="service_address_City">City</Label>
+          <Label htmlFor="businessCity">City</Label>
           <Input
-            id="service_address_City"
-            value={verificationData.service_address.City}
-            onChange={(e) => handleInputChange("service_address.City", e.target.value)}
+            id="businessCity"
+            value={verificationData.businessCity}
+            onChange={(e) => handleInputChange("businessCity", e.target.value)}
             placeholder="Enter city"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="service_address_State">State</Label>
+          <Label htmlFor="businessState">State</Label>
           <Input
-            id="service_address_State"
-            value={verificationData.service_address.State}
-            onChange={(e) => handleInputChange("service_address.State", e.target.value)}
+            id="businessState"
+            value={verificationData.businessState}
+            onChange={(e) => handleInputChange("businessState", e.target.value)}
             placeholder="Enter state"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="service_address_pinCode">Pincode</Label>
+          <Label htmlFor="businessPincode">Pincode</Label>
           <Input
-            id="service_address_pinCode"
-            value={verificationData.service_address.pinCode}
-            onChange={(e) => handleInputChange("service_address.pinCode", e.target.value)}
+            id="businessPincode"
+            value={verificationData.businessPincode}
+            onChange={(e) => handleInputChange("businessPincode", e.target.value)}
             placeholder="Enter pincode"
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="service_description">Business Description</Label>
+        <Label htmlFor="businessDescription">Business Description</Label>
         <Textarea
-          id="service_description"
-          value={verificationData.service_description}
-          onChange={(e) => handleInputChange("service_description", e.target.value)}
+          id="businessDescription"
+          value={verificationData.businessDescription}
+          onChange={(e) => handleInputChange("businessDescription", e.target.value)}
           placeholder="Describe your business, services, and expertise..."
           rows={4}
         />
@@ -402,90 +451,44 @@ export default function VendorVerificationPage() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="ownerAadhar">Aadhar Number</Label>
+          <Label htmlFor="ownerPhone">Owner Phone *</Label>
           <Input
-            id="ownerAadhar"
-            value={verificationData.ownerAadhar}
-            onChange={(e) => handleInputChange("ownerAadhar", e.target.value)}
-            placeholder="Enter Aadhar number"
+            id="ownerPhone"
+            value={verificationData.ownerPhone}
+            onChange={(e) => handleInputChange("ownerPhone", e.target.value)}
+            placeholder="+91 98765 43210"
+            required
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="ownerImage">Profile Image URL</Label>
+          <Label htmlFor="ownerCity">City</Label>
           <Input
-            id="ownerImage"
-            value={verificationData.ownerImage}
-            onChange={(e) => handleInputChange("ownerImage", e.target.value)}
-            placeholder="Enter profile image URL"
+            id="ownerCity"
+            value={verificationData.ownerCity}
+            onChange={(e) => handleInputChange("ownerCity", e.target.value)}
+            placeholder="Enter city"
           />
         </div>
-      </div>
 
-      {/* Contact Numbers Section */}
-      <div className="space-y-4">
-        <Label>Contact Numbers *</Label>
-        <div className="flex gap-2">
+        <div className="space-y-2">
+          <Label htmlFor="ownerState">State</Label>
           <Input
-            value={verificationData.tempContactNumber}
-            onChange={(e) => handleInputChange("tempContactNumber", e.target.value)}
-            placeholder="+91 98765 43210"
+            id="ownerState"
+            value={verificationData.ownerState}
+            onChange={(e) => handleInputChange("ownerState", e.target.value)}
+            placeholder="Enter state"
           />
-          <Button type="button" onClick={handleAddContactNumber}>Add</Button>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {verificationData.owner_contactNo.map((contact, index) => (
-            <Badge key={index} variant="secondary" className="flex items-center gap-1">
-              {contact}
-              <XCircle 
-                className="h-3 w-3 cursor-pointer" 
-                onClick={() => handleRemoveContactNumber(contact)}
-              />
-            </Badge>
-          ))}
-        </div>
-      </div>
 
-      {/* Owner Address */}
-      <div className="space-y-4">
-        <Label>Owner Address</Label>
-        <Textarea
-          value={verificationData.owner_address.location}
-          onChange={(e) => handleInputChange("owner_address.location", e.target.value)}
-          placeholder="Enter complete address"
-          rows={3}
-        />
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="owner_address_City">City</Label>
-            <Input
-              id="owner_address_City"
-              value={verificationData.owner_address.City}
-              onChange={(e) => handleInputChange("owner_address.City", e.target.value)}
-              placeholder="Enter city"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="owner_address_State">State</Label>
-            <Input
-              id="owner_address_State"
-              value={verificationData.owner_address.State}
-              onChange={(e) => handleInputChange("owner_address.State", e.target.value)}
-              placeholder="Enter state"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="owner_address_pinCode">Pincode</Label>
-            <Input
-              id="owner_address_pinCode"
-              value={verificationData.owner_address.pinCode}
-              onChange={(e) => handleInputChange("owner_address.pinCode", e.target.value)}
-              placeholder="Enter pincode"
-            />
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="ownerPincode">Pincode</Label>
+          <Input
+            id="ownerPincode"
+            value={verificationData.ownerPincode}
+            onChange={(e) => handleInputChange("ownerPincode", e.target.value)}
+            placeholder="Enter pincode"
+          />
         </div>
       </div>
     </div>
@@ -565,24 +568,24 @@ export default function VendorVerificationPage() {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
           <div>
-            <p className="text-sm font-medium text-gray-600">Service Name</p>
-            <p className="text-sm">{verificationData.service_name || "Not provided"}</p>
+            <p className="text-sm font-medium text-gray-600">Business Name</p>
+            <p className="text-sm">{verificationData.businessName || "Not provided"}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-600">Service Type</p>
-            <p className="text-sm">{verificationData.service_type || "Not provided"}</p>
+            <p className="text-sm font-medium text-gray-600">Business Type</p>
+            <p className="text-sm">{verificationData.businessType || "Not provided"}</p>
           </div>
           <div>
             <p className="text-sm font-medium text-gray-600">Business Phone</p>
-            <p className="text-sm">{verificationData.service_phone || "Not provided"}</p>
+            <p className="text-sm">{verificationData.businessPhone || "Not provided"}</p>
           </div>
           <div>
             <p className="text-sm font-medium text-gray-600">Business Email</p>
-            <p className="text-sm">{verificationData.service_email || "Not provided"}</p>
+            <p className="text-sm">{verificationData.businessEmail || "Not provided"}</p>
           </div>
           <div className="md:col-span-2">
             <p className="text-sm font-medium text-gray-600">Business Address</p>
-            <p className="text-sm">{verificationData.service_address.location || "Not provided"}</p>
+            <p className="text-sm">{verificationData.businessAddress || "Not provided"}</p>
           </div>
         </div>
       </div>
@@ -603,11 +606,11 @@ export default function VendorVerificationPage() {
             <p className="text-sm">{verificationData.ownerEmail || "Not provided"}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-600">Contact Numbers</p>
-            <p className="text-sm">{verificationData.owner_contactNo.join(", ") || "Not provided"}</p>
+            <p className="text-sm font-medium text-gray-600">Owner Phone</p>
+            <p className="text-sm">{verificationData.ownerPhone || "Not provided"}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-gray-600">Aadhar Number</p>
+            <p className="text-sm font-medium text-gray-600">Owner Aadhar</p>
             <p className="text-sm">{verificationData.ownerAadhar || "Not provided"}</p>
           </div>
         </div>
@@ -733,10 +736,9 @@ export default function VendorVerificationPage() {
       <Alert className="mt-6">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          <strong>Verification Process:</strong> After submission, our team will review your documents within 3-5 business days. 
-          You'll receive an email notification once the verification is complete.
+          <strong>Verification Process:</strong> Once you submit your verification, your account will be immediately verified and you'll be able to create listings and access all vendor features.
         </AlertDescription>
       </Alert>
     </div>
   )
-}
+} 

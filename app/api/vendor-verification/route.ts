@@ -1,6 +1,37 @@
+// /app/api/vendor-verification/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import Vendor from '@/model/vendor'; // adjust path as per your structure
 import connectDB from '@/lib/config/db'; // your MongoDB connection util
+
+export async function GET(req: NextRequest) {
+  try {
+    await connectDB();
+    const { searchParams } = new URL(req.url);
+    const clerkId = searchParams.get('clerkId');
+
+    if (!clerkId) {
+      return NextResponse.json({ error: 'clerkId is required' }, { status: 400 });
+    }
+
+    const vendor = await Vendor.findOne({ clerkId });
+    
+    if (!vendor) {
+      return NextResponse.json({ 
+        isVerified: false, 
+        message: 'Vendor not found' 
+      }, { status: 404 });
+    }
+
+    return NextResponse.json({ 
+      isVerified: vendor.isVerified || false,
+      vendor: vendor
+    }, { status: 200 });
+
+  } catch (error) {
+    console.error('[GET_VENDOR_VERIFICATION_ERROR]', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,21 +39,25 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       clerkId,
-      ownerName,
-      owner_contactNo,
-      ownerEmail,
-      ownerImage,
-      owner_address,
-      ownerAadhar,
-      service_name,
-      service_email,
-      service_phone,
-      service_address,
-      service_description,
+      businessName,
+      businessType,
+      businessAddress,
+      businessCity,
+      businessState,
+      businessPincode,
+      businessPhone,
+      businessEmail,
+      businessDescription,
       establishedYear,
-      service_type,
       gstNumber,
       panNumber,
+      ownerName,
+      ownerEmail,
+      ownerPhone,
+      ownerCity,
+      ownerState,
+      ownerPincode,
+      ownerAadhar,
       bankName,
       accountNumber,
       ifscCode,
@@ -33,54 +68,86 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'clerkId is required' }, { status: 400 });
     }
 
-    // Validate required fields
-    if (!ownerName || !ownerEmail || !service_name) {
-      return NextResponse.json({ 
-        error: 'Required fields missing: ownerName, ownerEmail, and service_name are required' 
-      }, { status: 400 });
+    // Check if vendor exists
+    let vendor = await Vendor.findOne({ clerkId });
+    
+    if (!vendor) {
+      // Create new vendor if doesn't exist
+      vendor = new Vendor({
+        clerkId,
+        ownerName: ownerName || businessName,
+        ownerEmail: ownerEmail || businessEmail,
+        service_name: businessName,
+        service_email: businessEmail,
+        service_phone: businessPhone,
+        service_address: {
+          City: businessCity,
+          State: businessState,
+          location: businessAddress,
+          pinCode: businessPincode
+        },
+        service_description: businessDescription,
+        establishedYear: establishedYear,
+        service_type: businessType,
+        gstNumber: gstNumber,
+        panNumber: panNumber,
+        bankName: bankName,
+        accountNumber: accountNumber,
+        ifscCode: ifscCode,
+        accountHolderName: accountHolderName,
+        owner_address: {
+          City: ownerCity,
+          State: ownerState,
+          location: "",
+          pinCode: ownerPincode
+        },
+        ownerAadhar: ownerAadhar,
+        isVerified: true, // Set to true when verification is submitted
+        updatedAt: new Date(),
+      });
+    } else {
+      // Update existing vendor
+      vendor.ownerName = ownerName || vendor.ownerName;
+      vendor.ownerEmail = ownerEmail || vendor.ownerEmail;
+      vendor.service_name = businessName || vendor.service_name;
+      vendor.service_email = businessEmail || vendor.service_email;
+      vendor.service_phone = businessPhone || vendor.service_phone;
+      vendor.service_address = {
+        City: businessCity || vendor.service_address?.City,
+        State: businessState || vendor.service_address?.State,
+        location: businessAddress || vendor.service_address?.location,
+        pinCode: businessPincode || vendor.service_address?.pinCode
+      };
+      vendor.service_description = businessDescription || vendor.service_description;
+      vendor.establishedYear = establishedYear || vendor.establishedYear;
+      vendor.service_type = businessType || vendor.service_type;
+      vendor.gstNumber = gstNumber || vendor.gstNumber;
+      vendor.panNumber = panNumber || vendor.panNumber;
+      vendor.bankName = bankName || vendor.bankName;
+      vendor.accountNumber = accountNumber || vendor.accountNumber;
+      vendor.ifscCode = ifscCode || vendor.ifscCode;
+      vendor.accountHolderName = accountHolderName || vendor.accountHolderName;
+      vendor.owner_address = {
+        City: ownerCity || vendor.owner_address?.City,
+        State: ownerState || vendor.owner_address?.State,
+        location: vendor.owner_address?.location || "",
+        pinCode: ownerPincode || vendor.owner_address?.pinCode
+      };
+      vendor.ownerAadhar = ownerAadhar || vendor.ownerAadhar;
+      vendor.isVerified = true; // Set to true when verification is submitted
+      vendor.updatedAt = new Date();
     }
 
-    const updatedVendor = await Vendor.findOneAndUpdate(
-      { clerkId },
-      {
-        $set: {
-          ownerName,
-          owner_contactNo: owner_contactNo || [],
-          ownerEmail,
-          ownerImage: ownerImage || "https://www.emamiltd.in/wp-content/themes/emami/images/Fair-and-Handsome02-mob-new.jpg",
-          owner_address: owner_address || { State: "", City: "", location: "", pinCode: "" },
-          ownerAadhar: ownerAadhar || "",
-          service_name,
-          service_email: service_email || "",
-          service_phone: service_phone || "",
-          service_address: service_address || { State: "", City: "", location: "", pinCode: "" },
-          service_description: service_description || "",
-          establishedYear: establishedYear || "",
-          service_type: service_type || "",
-          gstNumber: gstNumber || "",
-          panNumber: panNumber || "",
-          bankName: bankName || "",
-          accountNumber: accountNumber || "",
-          ifscCode: ifscCode || "",
-          accountHolderName: accountHolderName || "",
-          isVerified: true,
-          updatedAt: new Date(),
-        },
-      },
-      { new: true, upsert: true } // upsert: true will create if doesn't exist
-    );
+    await vendor.save();
 
-    return NextResponse.json({ success: true, vendor: updatedVendor }, { status: 200 });
+    return NextResponse.json({ 
+      success: true, 
+      vendor: vendor,
+      message: "Verification submitted successfully. Your application has been verified."
+    }, { status: 200 });
 
   } catch (error) {
     console.error('[VERIFY_VENDOR_ERROR]', error);
-    
-    // Type-safe error handling
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    
-    return NextResponse.json({ 
-      error: 'Internal Server Error', 
-      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined 
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
