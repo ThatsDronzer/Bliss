@@ -9,11 +9,19 @@ export default function SignUpPage() {
 
   return (
     <SignUp
-      path="/sign-up"
-      routing="path"
-      signInUrl={`/sign-in?role=${role}`}
-      forceRedirectUrl={`/role-handler?role=${role}`}  // 👈 handle role update
-      redirectUrl="/"
-    />
+  path="/sign-up"
+  routing="path"
+  signInUrl={`/sign-in?role=${role}`}
+  forceRedirectUrl={"/"}
+  appearance={{
+    elements: {
+      formButtonPrimary: "bg-pink-600 hover:bg-pink-700",
+    },
+  }}
+  unsafeMetadata={{
+    role: role, // ✅ Set role immediately at signup
+  }}
+/>
+
   );
 }
