@@ -1,5 +1,5 @@
 "use client"
-
+import AddImagesModal from "@/components/add-images-modal";
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useAuth, useUser } from "@clerk/nextjs"
@@ -32,6 +32,7 @@ export default function ListingViewPage() {
   const [token, setToken] = useState<string | null>(null)
   const [listing, setListing] = useState<Listing | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Moved inside the component
   const router = useRouter()
   const params = useParams()
   const { isSignedIn, isLoaded } = useAuth()
@@ -88,11 +89,16 @@ export default function ListingViewPage() {
     if (isSignedIn && userRole === "vendor") {
       fetchListing()
     }
-  }, [session, params.id, isSignedIn, userRole])
+  }, [session, params.id, isSignedIn, userRole, refreshTrigger]); // Add refreshTrigger here
+
 
   if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null
   }
+  // Add this function to trigger refresh
+  const handleImagesAdded = () => {
+    setRefreshTrigger(prev => prev + 1); // This will trigger the useEffect to re-fetch
+  };
 
   if (loading) {
     return (
@@ -186,6 +192,15 @@ export default function ListingViewPage() {
                 <Edit className="mr-1 h-4 w-4" />
                 Edit
               </Button>
+              {/* for adding images////////////////////////////////////////////////////////
+              // //////////////////////
+              // /////////////
+              // ////////////  */}
+              <AddImagesModal
+                listingId={listing._id}
+                token={token}
+                onImagesAdded={handleImagesAdded}
+              />
             </div>
           </div>
         </div>
