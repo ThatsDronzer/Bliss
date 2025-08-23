@@ -49,6 +49,10 @@ const listingSchema = new Schema<IListing>(
       // }
       {
         url: { type: String, required: true }, // Explicitly define the type as String
+        public_id: {
+          type: String,
+          required: true
+        }
         // filename: { type: String, required: true }, // Uncomment this if you intend to use filename
       },
     ],
