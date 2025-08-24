@@ -36,6 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
+import { updateUserToVendor } from "@/app/role-handler/action"
 
 export function Header() {
   const router = useRouter()
@@ -215,14 +216,22 @@ export function Header() {
 
                   {/* Only show "Become a Vendor" button for regular users */}
                   {userRole === "user" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleBecomeVendor}
-                      className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
-                    >
-                      Become a Vendor
-                    </Button>
+                    // <Button
+                    //   variant="ghost"
+                    //   size="sm"
+                    //   onClick={handleBecomeVendor}
+                    //   className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
+                    // >
+                    //   Become a Vendor
+                    // </Button>
+                    <form action={updateUserToVendor} className="mt-8">
+                      <button 
+                        type="submit" 
+                        className="px-4 py-2 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
+                      >
+                        Become a Vendor
+                      </button>
+                    </form>
                   )}
 
                   {/* Removed Vendor Dashboard button for vendors */}
