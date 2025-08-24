@@ -10,8 +10,10 @@ import type { NextRequest } from "next/server";
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } } // `id` will be the listing ID
+  { params }: { params: { id: string } }
 ) {
+  const { id } = params;
+  // ... use `id` instead of `params.id` in your code
   const auth = getAuth(req);
   const userId = auth.userId; // Clerk user ID
 

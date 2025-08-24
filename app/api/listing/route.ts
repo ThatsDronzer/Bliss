@@ -171,20 +171,110 @@ export async function PUT(req: NextRequest) {
   await connectDB();
 
   try {
-    const body = await req.json();
-    const { listingId, title, description, price, location, category } = body;
+    const formData = await req.formData();
+    const listingId = formData.get('listingId') as string;
+    
+    if (!listingId) {
+      return NextResponse.json(
+        { message: "Listing ID is required" },
+        { status: 400 }
+      );
+    }
 
+    // Find the listing
     const listing = await Listing.findById(listingId);
     if (!listing) {
       return NextResponse.json({ message: "Listing not found" }, { status: 404 });
     }
 
-    // Update the listing fields
-    listing.title = title || listing.title;
-    listing.description = description || listing.description;
-    listing.price = price || listing.price;
-    listing.location = location || listing.location;
-    listing.category = category || listing.category;
+    // Verify the listing belongs to the current vendor
+    const vendor = await Vendor.findOne({ clerkId: userId });
+    if (!vendor || !listing.owner.equals(vendor._id)) {
+      return NextResponse.json(
+        { message: "Unauthorized: You do not own this listing" },
+        { status: 403 }
+      );
+    }
+
+    // Handle image uploads if new images are provided
+    const imageFiles = formData.getAll('images') as File[];
+    const uploadedImages = [];
+
+    if (imageFiles.length > 0 && imageFiles[0].size > 0) {
+      // Upload each new image to Cloudinary
+      for (const file of imageFiles) {
+        if (file.size > 0) {
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
+
+          const uploadResult: any = await new Promise((resolve, reject) => {
+            cloudinary.uploader.upload_stream(
+              {
+                folder: 'listings',
+                transformation: [
+                  { width: 800, height: 800, crop: 'limit' },
+                  { quality: 'auto' }
+                ]
+              },
+              (error, result) => {
+                if (error) reject(error);
+                resolve(result);
+              }
+            ).end(buffer);
+          });
+
+          uploadedImages.push({
+            url: uploadResult.secure_url,
+            public_id: uploadResult.public_id
+          });
+        }
+      }
+    }
+
+    // Handle image deletions if image IDs to delete are provided
+    const imagesToDelete = formData.get('imagesToDelete') as string;
+    if (imagesToDelete) {
+      try {
+        const deleteIds = JSON.parse(imagesToDelete);
+        if (Array.isArray(deleteIds) && deleteIds.length > 0) {
+          // Delete images from Cloudinary
+          await Promise.all(
+            deleteIds.map(async (publicId: string) => {
+              await cloudinary.uploader.destroy(publicId);
+            })
+          );
+          
+          // Remove from listing images array
+          listing.images = listing.images.filter(
+            (img: any) => !deleteIds.includes(img.public_id)
+          );
+        }
+      } catch (error) {
+        console.error("Error parsing imagesToDelete:", error);
+      }
+    }
+
+    // Update the listing with new images if any
+    if (uploadedImages.length > 0) {
+      listing.images = [...listing.images, ...uploadedImages];
+    }
+
+    // Update other listing fields
+    const title = formData.get('title');
+    const description = formData.get('description');
+    const price = formData.get('price');
+    const location = formData.get('location');
+    const category = formData.get('category');
+    const features = formData.get('features');
+    const status = formData.get('status');
+
+    if (title) listing.title = title as string;
+    if (description) listing.description = description as string;
+    if (price) listing.price = parseFloat(price as string);
+    if (location) listing.location = location as string;
+    if (category) listing.category = category as string;
+    if (features) listing.features = JSON.parse(features as string);
+    if (status) listing.status = status as string;
 
     await listing.save();
 
@@ -193,12 +283,14 @@ export async function PUT(req: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
+    console.error("Error updating listing:", error);
     return NextResponse.json(
       { message: "Failed to update listing", error: error.message },
       { status: 500 }
     );
   }
 }
+
 
 export async function DELETE(req: NextRequest) {
   const auth = getAuth(req);

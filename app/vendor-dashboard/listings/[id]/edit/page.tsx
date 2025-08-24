@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Upload, Plus, X } from "lucide-react"
+import { ArrowLeft, Upload, X } from "lucide-react"
 
 import { useAuth, useSession, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
@@ -11,30 +11,42 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/components/ui/use-toast"
+
+interface ListingImage {
+  url: string;
+  public_id?: string;
+}
+
+interface ListingData {
+  title: string;
+  description: string;
+  category: string;
+  price: string;
+  location: string;
+  images: ListingImage[];
+}
 
 export default function EditListingPage() {
   const router = useRouter()
-    const { session } = useSession();
+  const { session } = useSession();
   const [token, setToken] = useState<string | null>(null)
   const params = useParams()
   const { isLoaded, isSignedIn } = useAuth();
-  
+
   const { user } = useUser();
   const userRole = user?.unsafeMetadata?.role as string || "user";
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ListingData>({
     title: "",
     description: "",
     category: "",
     price: "",
     location: "",
-    // capacity: "",
-    images: [] as string[],
-    // terms: [] as string[],
+    images: [],
   })
-  const [newTerm, setNewTerm] = useState("")
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([])
 
   // Redirect if not authenticated as vendor
   useEffect(() => {
@@ -43,9 +55,6 @@ export default function EditListingPage() {
     }
   }, [isLoaded, isSignedIn, userRole, router]);
 
-  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
-    return null;
-  }
   useEffect(() => {
     const fetchToken = async () => {
       if (session) {
@@ -56,7 +65,7 @@ export default function EditListingPage() {
     fetchToken();
   }, [session]);
 
- useEffect(() => {
+  useEffect(() => {
     async function fetchListing() {
       try {
         const res = await fetch(`/api/listing/${params.id}`);
@@ -67,14 +76,17 @@ export default function EditListingPage() {
           title: listing.title || "",
           description: listing.description || "",
           category: listing.category || "",
-          price: listing.price || "",
+          price: listing.price?.toString() || "",
           location: listing.location || "",
-          // capacity: listing.capacity || "",
-          images: listing.images || [],  
-          // terms: listing.terms || [],
+          images: listing.images || [],
         });
       } catch (err) {
         console.error("Failed to fetch listing:", err);
+        toast({
+          title: "Error",
+          description: "Failed to fetch listing details",
+          variant: "destructive",
+        });
       }
     }
 
@@ -96,106 +108,127 @@ export default function EditListingPage() {
     "Other",
   ]
 
-  const handleInputChange = (field: string, value: string | string[]) => {
+  const handleInputChange = (field: keyof ListingData, value: string | ListingImage[]) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  // const handleAddTerm = () => {
-  //   if (newTerm.trim() && !formData.terms.includes(newTerm.trim())) {
-  //     handleInputChange("terms", [...formData.terms, newTerm.trim()])
-  //     setNewTerm("")
-  //   }
-  // }
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      setImageFiles(prev => [...prev, ...Array.from(files)]);
+      // Show success message
+      toast({
+        title: "Images Selected",
+        description: `${files.length} image(s) added for upload`,
+      });
+    }
+  }
 
-  // const handleRemoveTerm = (term: string) => {
-  //   handleInputChange(
-  //     "terms",
-  //     formData.terms.filter((t) => t !== term)
-  //   )
-  // }
+  const handleRemoveExistingImage = (index: number, publicId: string) => {
+    // Add to deletion list
+    if (publicId) {
+      setImagesToDelete(prev => [...prev, publicId]);
+    }
 
-  // const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const files = e.target.files
-  //   if (files) {
-  //     // For demo purposes, we'll just add placeholder URLs
-  //     const newImages = Array.from(files).map((file) => `/placeholder.svg?text=${file.name}`)
-  //     handleInputChange("images", [...formData.images, ...newImages])
-  //   }
-  // }
+    // Remove from displayed images
+    handleInputChange(
+      "images",
+      formData.images.filter((_, i) => i !== index)
+    )
 
-  // const handleRemoveImage = (index: number) => {
-  //   handleInputChange(
-  //     "images",
-  //     formData.images.filter((_, i) => i !== index)
-  //   )
-  // }
+    toast({
+      title: "Image Removed",
+      description: "Image will be deleted when you save changes",
+    });
+  }
+
+  const handleRemoveNewImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    toast({
+      title: "Image Removed",
+      description: "Upload cancelled for this image",
+    });
+  }
 
   const validateForm = () => {
     if (!formData.title || !formData.description || !formData.category || !formData.price) {
       return "Please fill in all required fields (Title, Description, Category, Price)"
     }
-    // if (formData.terms.length === 0) {
-    //   return "Please add at least one term or condition"
-    // }
     return null
   }
 
- const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-
-  const validationError = validateForm();
-  if (validationError) {
-    toast({
-      title: "Validation Error",
-      description: validationError,
-      variant: "destructive",
-    });
-    return;
-  }
-
-  setIsLoading(true);
-  
-
-  try {
-
-    const res = await fetch("/api/listing", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // Auth header
-      },
-      body: JSON.stringify({
-        listingId: params.id,
-        title: formData.title,
-        description: formData.description,
-        category: formData.category,
-        price: formData.price,
-        location: formData.location,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error("Failed to update listing");
+    const validationError = validateForm();
+    if (validationError) {
+      toast({
+        title: "Validation Error",
+        description: validationError,
+        variant: "destructive",
+      });
+      return;
     }
 
-    toast({
-      title: "Listing Updated",
-      description: "Your listing has been successfully updated.",
-    });
+    setIsLoading(true);
 
-    router.push("/vendor-dashboard/listings");
-  } catch (err) {
-    toast({
-      title: "Error",
-      description: "An error occurred while updating the listing.",
-      variant: "destructive",
-    });
-  } finally {
-    setIsLoading(false);
+    try {
+      // Create FormData to handle file uploads
+      const submitFormData = new FormData();
+
+      // Add text fields
+      submitFormData.append('listingId', params.id as string);
+      submitFormData.append('title', formData.title);
+      submitFormData.append('description', formData.description);
+      submitFormData.append('category', formData.category);
+      submitFormData.append('price', formData.price);
+      submitFormData.append('location', formData.location);
+
+      // Add images to delete if any
+      if (imagesToDelete.length > 0) {
+        submitFormData.append('imagesToDelete', JSON.stringify(imagesToDelete));
+      }
+
+      // Add new image files
+      imageFiles.forEach(file => {
+        submitFormData.append('images', file);
+      });
+
+      const res = await fetch("/api/listing", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: submitFormData,
+      });
+
+      const responseData = await res.json();
+
+      if (!res.ok) {
+        throw new Error(responseData.message || "Failed to update listing");
+      }
+
+      toast({
+        title: "Listing Updated",
+        description: "Your listing has been successfully updated.",
+      });
+
+      router.push("/vendor-dashboard/listings");
+    } catch (err: any) {
+      console.error("Update error:", err);
+      toast({
+        title: "Error",
+        description: err.message || "An error occurred while updating the listing.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
+    return null;
   }
-};
-
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -257,9 +290,10 @@ export default function EditListingPage() {
                   <Label htmlFor="price">Price *</Label>
                   <Input
                     id="price"
+                    type="number"
                     value={formData.price}
                     onChange={(e) => handleInputChange("price", e.target.value)}
-                    placeholder="e.g., ₹50,000 or Starting from ₹25,000"
+                    placeholder="e.g., 50000"
                     required
                   />
                 </div>
@@ -273,16 +307,6 @@ export default function EditListingPage() {
                     placeholder="Enter location"
                   />
                 </div>
-
-                {/* <div className="space-y-2">
-                  <Label htmlFor="capacity">Capacity</Label>
-                  <Input
-                    id="capacity"
-                    value={formData.capacity}
-                    onChange={(e) => handleInputChange("capacity", e.target.value)}
-                    placeholder="e.g., 200 guests"
-                  />
-                </div> */}
               </div>
 
               <div className="space-y-2">
@@ -300,6 +324,7 @@ export default function EditListingPage() {
           </Card>
 
           {/* Images */}
+
           <Card>
             <CardHeader>
               <CardTitle>Images</CardTitle>
@@ -309,82 +334,87 @@ export default function EditListingPage() {
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                 <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                 <p className="text-sm text-gray-500 mb-2">Click to upload images</p>
+
+                {/* File input with proper label connection */}
                 <input
                   type="file"
-                  multiple
-                  accept="image/*"
-                  // onChange={handleImageUpload}
-                  className="hidden"
                   id="image-upload"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  multiple
                 />
-                <label htmlFor="image-upload">
-                  <Button type="button" variant="outline" className="cursor-pointer">
-                    Choose Files
-                  </Button>
+
+                {/* Button that triggers the file input */}
+                <label
+                  htmlFor="image-upload"
+                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  Choose Files
                 </label>
+                <p className="text-xs text-gray-400 mt-2">
+                  JPG, PNG, or WEBP (Max 5MB each)
+                </p>
               </div>
 
+              {/* Existing images */}
               {formData.images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {formData.images.map((image, index) => (
-                    <div key={index} className="relative">
-                      <img
-                        src={image}
-                        alt={`Listing image ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        // onClick={() => handleRemoveImage(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
+                <div>
+                  <h4 className="font-medium mb-2">Existing Images</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {formData.images.map((image, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={image.url}
+                          alt={`Listing image ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 flex items-center justify-center rounded-lg transition-all">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExistingImage(index, image.public_id || '')}
+                            className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-6 w-6" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* New images to be uploaded */}
+              {imageFiles.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">New Images to Upload</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {imageFiles.map((file, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`New image ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 flex items-center justify-center rounded-lg transition-all">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNewImage(index)}
+                            className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-6 w-6" />
+                          </button>
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 truncate">
+                          {file.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
-
-          {/* Terms & Conditions */}
-          {/* <Card>
-            <CardHeader>
-              <CardTitle>Terms & Conditions</CardTitle>
-              <CardDescription>Add any specific terms or conditions for your service</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  value={newTerm}
-                  onChange={(e) => setNewTerm(e.target.value)}
-                  placeholder="Add a term or condition"
-                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTerm())}
-                />
-                <Button type="button" onClick={handleAddTerm} disabled={!newTerm.trim()}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {formData.terms.length > 0 && (
-                <div className="space-y-2">
-                  {formData.terms.map((term, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Checkbox checked={true} disabled />
-                      <span className="flex-1">{term}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTerm(term)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card> */}
 
           {/* Submit Buttons */}
           <div className="flex gap-4 justify-end">
@@ -403,4 +433,4 @@ export default function EditListingPage() {
       </div>
     </div>
   )
-} 
+}
