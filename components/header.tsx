@@ -45,8 +45,6 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState("")
   const [userCoins, setUserCoins] = useState(0)
   const { signOut } = useClerk();
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Demo cart items count
   const cartItemsCount = 3
@@ -74,24 +72,7 @@ export function Header() {
     }
   }
 
-  const handleDeleteAccount = async () => {
-    if (!user) return
-    
-    setIsDeleting(true)
-    try {
-      // Delete user from Clerk
-      await user.delete()
-      
-      toast.success('Account deleted successfully')
-      router.push('/')
-    } catch (error) {
-      console.error('Failed to delete account:', error)
-      toast.error('Failed to delete account. Please try again.')
-    } finally {
-      setIsDeleting(false)
-      setShowDeleteDialog(false)
-    }
-  }
+
 
   const getDashboardLink = () => {
     // Route to appropriate dashboard based on user role
@@ -104,9 +85,26 @@ export function Header() {
     }
   }
 
-  const handleBecomeVendor = async () => {
-    await signOut(); // logs out current user
-    router.push("/sign-up?role=vendor"); // redirect to vendor sign up
+  // State for Become Vendor confirmation dialog
+  const [showBecomeVendorDialog, setShowBecomeVendorDialog] = useState(false);
+  const [isBecomingVendor, setIsBecomingVendor] = useState(false);
+
+  const handleBecomeVendor = () => {
+    setShowBecomeVendorDialog(true);
+  };
+
+  const handleConfirmBecomeVendor = async () => {
+    setIsBecomingVendor(true);
+    try {
+      await updateUserToVendor();
+      toast.success("Your account is now a vendor!");
+      router.refresh();
+    } catch (error) {
+      toast.error("Failed to update account. Please try again.");
+    } finally {
+      setIsBecomingVendor(false);
+      setShowBecomeVendorDialog(false);
+    }
   };
 
   const handleSignIn = async () => {
@@ -214,24 +212,42 @@ export function Header() {
                     Dashboard
                   </Button>
 
-                  {/* Only show "Become a Vendor" button for regular users */}
+                  {/* Only show "Become a Vendor" button for regular users, with confirmation dialog */}
                   {userRole === "user" && (
-                    // <Button
-                    //   variant="ghost"
-                    //   size="sm"
-                    //   onClick={handleBecomeVendor}
-                    //   className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
-                    // >
-                    //   Become a Vendor
-                    // </Button>
-                    <form action={updateUserToVendor} className="mt-8">
-                      <button 
-                        type="submit" 
-                        className="px-4 py-2 font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700"
+                    <>
+                      <Button
+                        type="button"
+                        className="px-4 py-2 font-semibold text-white bg-pink-600 rounded-lg hover:bg-pink-700 transition-colors"
+                        onClick={handleBecomeVendor}
                       >
                         Become a Vendor
-                      </button>
-                    </form>
+                      </Button>
+                      <AlertDialog open={showBecomeVendorDialog} onOpenChange={setShowBecomeVendorDialog}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                              <AlertTriangle className="h-5 w-5 text-pink-600" />
+                              Change Account to Vendor?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action will change your account from <span className="font-semibold text-pink-600">User</span> to <span className="font-semibold text-pink-600">Vendor</span>.<br />
+                              You will be able to list your services, but some user features may be restricted.<br />
+                              Are you sure you want to continue?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isBecomingVendor}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleConfirmBecomeVendor}
+                              disabled={isBecomingVendor}
+                              className="bg-pink-600 hover:bg-pink-700"
+                            >
+                              {isBecomingVendor ? "Changing..." : "Confirm"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
                   )}
 
                   {/* Removed Vendor Dashboard button for vendors */}
@@ -261,40 +277,6 @@ export function Header() {
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Sign Out</span>
                     </DropdownMenuItem>
-                    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem
-                          onSelect={(e) => {
-                            e.preventDefault();
-                          }}
-                          className="text-red-600 focus:text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          <span>Delete Account</span>
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="flex items-center gap-2">
-                            <AlertTriangle className="h-5 w-5 text-red-500" />
-                            Delete Account
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete your account and remove all your data from our servers.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleDeleteAccount}
-                            disabled={isDeleting}
-                            className="bg-red-600 hover:bg-red-700"
-                          >
-                            {isDeleting ? "Deleting..." : "Delete Account"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
@@ -317,14 +299,7 @@ export function Header() {
                 >
                   Sign Up
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBecomeVendor}
-                  className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
-                >
-                  Vendor Login
-                </Button>
+
               </div>
             </SignedOut>
 
@@ -438,13 +413,7 @@ export function Header() {
                       >
                         Sign Up
                       </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={handleBecomeVendor}
-                        className="text-gray-700 hover:text-pink-600 hover:bg-pink-50"
-                      >
-                        Vendor Login
-                      </Button>
+
                     </div>
                   </SignedOut>
                 </div>
