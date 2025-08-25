@@ -6,7 +6,7 @@ import connectDB from "@/lib/config/db";
 import User from "@/model/user";
 import Vendor from "@/model/vendor";
 
-// (Your ClerkEvent interface remains the same)
+// Your ClerkEvent interface...
 interface ClerkEvent {
   type: "user.created" | "user.updated" | "user.deleted";
   data: {
@@ -14,15 +14,14 @@ interface ClerkEvent {
     email_addresses: { email_address: string }[];
     first_name: string;
     last_name: string;
-    unsafeMetadata?: {
+    unsafe_metadata?: {
       role?: "user" | "vendor";
     };
   };
 }
 
-
 export async function POST(req: Request) {
-  // ... (Payload and Svix verification code remains the same)
+  // ... Webhook verification code ...
   const payload = await req.json();
   const headersList = headers();
   const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
@@ -39,61 +38,69 @@ export async function POST(req: Request) {
   }
 
   const eventType = evt.type;
-  await connectDB();
 
-  // ✅ STEP 1: Handle Initial User Creation
-  if (eventType === "user.created") {
-    const { id, email_addresses, first_name, last_name } = evt.data;
-    const email = email_addresses?.[0]?.email_address ?? "";
+  try {
+    await connectDB();
 
-    console.log(`New user ${id} is being created.`);
+    // Handle user creation and re-linking
+    if (eventType === "user.created") {
+      const { id, email_addresses, first_name, last_name } = evt.data;
+      const email = email_addresses?.[0]?.email_address ?? "";
 
-    await User.create({
-      clerkId: id,
-      name: `${first_name} ${last_name}`,
-      email: email,
-      // You can set a default role here if your schema requires it
+      // 👇 THE FIX: Find by clerkId OR email to handle orphaned users
+      await User.findOneAndUpdate(
+        { $or: [{ clerkId: id }, { email: email }] },
+        {
+          $set: { // Use $set to update all fields, including the clerkId
+            clerkId: id,
+            name: `${first_name} ${last_name}`,
+            email: email,
+          },
+        },
+        { upsert: true, new: true } // Create if no user is found by either key
+      );
+      console.log(`[Webhook] User record created or updated for ${id}.`);
+    }
+
+    // Handle vendor upgrade
+   if (eventType === "user.updated") {
+  const { id, unsafe_metadata } = evt.data;
+  const role = unsafe_metadata?.role;
+
+  console.log("[Webhook] Role detected:", role);
+
+  if (role === "vendor") {
+    const userRecord = await User.findOne({ clerkId: id });
+    if (!userRecord) {
+      console.log(`[Webhook] ❌ No User found with clerkId ${id}. Vendor not created.`);
+      return;
+    }
+
+    await Vendor.create({
+      clerkId: userRecord.clerkId,
+      ownerName: userRecord.name,
+      ownerEmail: userRecord.email,
     });
 
-    console.log(`✅ User record created in DB for ${id}.`);
+    await User.findOneAndDelete({ clerkId: id });
+    console.log(`[Webhook] ✅ User ${id} successfully migrated to Vendor.`);
   }
-  
-  // ✅ STEP 2: Handle User Upgrade to Vendor
-  if (eventType === "user.updated") {
-    const { id, unsafeMetadata } = evt.data;
-    const role = unsafeMetadata?.role as string;
+}
 
-    if (role === "vendor") {
-      console.log(`User ${id} is being upgraded to a Vendor.`);
-      
-      const userRecord = await User.findOne({ clerkId: id });
-
-      if (userRecord) {
-        await Vendor.create({
-          clerkId: userRecord.clerkId,
-          ownerName: userRecord.name,
-          ownerEmail: userRecord.email,
-        });
-        console.log(`Vendor record created for ${id}.`);
-
-        // 👇 STEP 2: The Fix - Delete the original user record
-        await User.findOneAndDelete({ clerkId: id });
-        console.log(`✅ Original user record for ${id} deleted.`);
-      } else {
-        console.log(`User record for ${id} not found for migration. A vendor might have updated their profile.`);
-      }
-    }
-  }
-
-  // ✅ STEP 3: Handle User Deletion
-  if (eventType === "user.deleted") {
-    const deletedUserId = evt.data.id;
-    if (deletedUserId) {
+    // Handle user deletion
+    if (eventType === "user.deleted") {
+      const deletedUserId = evt.data.id;
+      if (deletedUserId) {
         await User.findOneAndDelete({ clerkId: deletedUserId });
         await Vendor.findOneAndDelete({ clerkId: deletedUserId });
-        console.log(`🗑️ User/Vendor with clerkId ${deletedUserId} deleted from DB`);
+        console.log(`[Webhook] 🗑️ User/Vendor with clerkId ${deletedUserId} deleted.`);
+      }
     }
-  }
 
-  return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true });
+
+  } catch (error) {
+    console.error("[Webhook] A CRITICAL ERROR OCCURRED:", error);
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
 }

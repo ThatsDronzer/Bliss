@@ -11,7 +11,7 @@ export default function SignUpPage() {
     <SignIn
   path="/sign-in"
   routing="path"
-  signInUrl={`/sign-up?role=${role}`}
+  signUpUrl={`/sign-up?role=${role}`}
   forceRedirectUrl={"/"}
   appearance={{
     elements: {
