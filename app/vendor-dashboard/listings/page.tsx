@@ -138,7 +138,7 @@ export default function VendorListingsPage() {
         const data = await res.json();
 
         let listingsArray: Listing[] = data.listings;
-        console.log("Fetched listings:", listingsArray);
+      
 
         if (!Array.isArray(listingsArray)) {
           console.error(

@@ -6,7 +6,13 @@ import { NextResponse } from "next/server";
 import { users } from "@clerk/clerk-sdk-node";
 import cloudinary from "@/lib/cloudinary";
 import type { NextRequest } from "next/server";
+// /api/upload.js
 
+export const config = {
+  api: {
+    bodyParser: false, // Disallow body parsing, let multer handle it
+  },
+};
 export async function GET(req: NextRequest) {
   const auth = getAuth(req);
   const userId = auth.userId;
