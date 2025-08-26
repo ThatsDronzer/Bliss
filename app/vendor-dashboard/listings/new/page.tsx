@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { useSession } from '@clerk/clerk-react';
 import { Badge } from "@/components/ui/badge"
 
@@ -150,11 +150,7 @@ export default function NewListingPage() {
         description: "",
       })
     } else {
-      toast({
-        title: "Validation Error",
-        description: "Please provide feature name and price",
-        variant: "destructive",
-      })
+      toast.error("Feature name and price are required")
     }
   }
 
@@ -204,11 +200,7 @@ export default function NewListingPage() {
 
     const validationError = validateForm();
     if (validationError) {
-      toast({
-        title: "Validation Error",
-        description: validationError,
-        variant: "destructive",
-      });
+      toast.error(validationError);
       return;
     }
 
@@ -246,15 +238,11 @@ export default function NewListingPage() {
       }
 
       const data = await response.json();
-      toast({ title: "Success", description: "Listing created successfully!" });
+      toast.success("Listing created successfully")
       router.push("/vendor-dashboard/listings");
     } catch (err) {
       console.error("Error in handleSubmit:", err);
-      toast({
-        title: "Error",
-        description: (err as Error).message || "Something went wrong",
-        variant: "destructive",
-      });
+      toast.error(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
       setIsLoading(false);
     }

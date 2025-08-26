@@ -4,11 +4,24 @@ import Vendor from "@/model/vendor";
 import { getAuth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { users } from "@clerk/clerk-sdk-node";
-import cloudinary from "@/lib/cloudinary";
+import { v2 as cloudinary } from 'cloudinary';
 import type { NextRequest } from "next/server";
 
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
 
 const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
+
+export const config = {
+  api: {
+    bodyParser: false, // Disable default body parser for file uploads
+  },
+};
 
 export async function PATCH(req: NextRequest) {
   try {
@@ -49,7 +62,7 @@ export async function PATCH(req: NextRequest) {
 
     const formData = await req.formData();
     const listingId = formData.get('listingId') as string;
-    const imageFiles = formData.getAll('newImages') as File[];
+    const imageFiles = formData.getAll('images') as File[]; // Changed from 'newImages' to 'images'
 
     console.log('Received data:', { listingId, fileCount: imageFiles.length });
 
@@ -62,7 +75,7 @@ export async function PATCH(req: NextRequest) {
 
     if (!imageFiles || imageFiles.length === 0) {
       return NextResponse.json(
-        { message: "At least one new image is required" },
+        { message: "At least one image is required" },
         { status: 400 }
       );
     }
@@ -92,42 +105,36 @@ export async function PATCH(req: NextRequest) {
 
     const newUploadedImages = [];
     
+    // Process images sequentially to avoid overwhelming the serverless function
     for (const file of imageFiles) {
       try {
         console.log(`Processing file: ${file.name}, size: ${file.size} bytes`);
         
+        // Convert file to base64 for Cloudinary upload
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
+        const base64String = buffer.toString('base64');
+        const dataUri = `data:${file.type};base64,${base64String}`;
 
-        const uploadResult: any = await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => {
-            reject(new Error('Upload timeout'));
-          }, 10000);
+        // Update the Cloudinary upload section with proper typing
+const uploadResult = await Promise.race([
+  cloudinary.uploader.upload(dataUri, {
+    folder: 'listings',
+    transformation: [
+      { width: 800, height: 800, crop: 'limit' },
+      { quality: 'auto' }
+    ]
+  }) as Promise<any>, // Add type assertion here
+  new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Upload timeout')), 8000)
+  )
+]);
 
-          cloudinary.uploader.upload_stream(
-            {
-              folder: 'listings',
-              transformation: [
-                { width: 800, height: 800, crop: 'limit' },
-                { quality: 'auto' }
-              ]
-            },
-            (error, result) => {
-              clearTimeout(timeout);
-              if (error) {
-                console.error('Cloudinary upload error:', error);
-                reject(error);
-              } else {
-                resolve(result);
-              }
-            }
-          ).end(buffer);
-        });
-
-        newUploadedImages.push({
-          url: uploadResult.secure_url,
-          public_id: uploadResult.public_id
-        });
+// Then safely access the properties
+newUploadedImages.push({
+  url: (uploadResult as any).secure_url, // Type assertion for safety
+  public_id: (uploadResult as any).public_id
+});
 
         console.log(`Successfully uploaded: ${file.name}`);
 
