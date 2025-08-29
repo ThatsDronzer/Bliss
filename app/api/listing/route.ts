@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ listings }, { status: 200 });
 }
 
+
 export async function POST(req: NextRequest) {
   const auth = getAuth(req);
   const userId = auth.userId;
@@ -48,120 +49,118 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await users.getUser(userId);
-  const role = user.unsafeMetadata?.role;
-
-  if (role !== "vendor") {
-    return NextResponse.json(
-      { message: "User is not a vendor" },
-      { status: 403 }
-    );
-  }
-
-  await connectDB();
-
   try {
+    const { users } = await import("@clerk/clerk-sdk-node");
+    const user = await users.getUser(userId);
+    const role = user.unsafeMetadata?.role;
+
+    if (role !== "vendor") {
+      return NextResponse.json(
+        { message: "User is not a vendor" },
+        { status: 403 }
+      );
+    }
+
+    await connectDB();
+
+    // Ensure vendor exists (no auto-create here)
+    const vendor = await Vendor.findOne({ clerkId: userId });
+    if (!vendor) {
+      return NextResponse.json(
+        {
+          message:
+            "Vendor profile not found. Please complete vendor setup before creating a listing.",
+        },
+        { status: 400 }
+      );
+    }
+
     const formData = await req.formData();
 
-    // Get all images from form data (supports multiple files)
-    const imageFiles = formData.getAll('images') as File[];
-    const uploadedImages = [];
+    // Handle image uploads safely
+    const imageFiles = formData.getAll("images") as File[];
+    const uploadedImages: { url: string; public_id: string }[] = [];
 
-    // Upload each image to Cloudinary
     for (const file of imageFiles) {
-      if (file.size > 0) { // Check if file exists
-        const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+      if (file?.size > 0) {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
 
-        const uploadResult: any = await new Promise((resolve, reject) => {
-          cloudinary.uploader.upload_stream(
-            {
-              folder: 'listings',
-              transformation: [
-                { width: 800, height: 800, crop: 'limit' },
-                { quality: 'auto' }
-              ]
-            },
-            (error, result) => {
-              if (error) reject(error);
-              resolve(result);
-            }
-          ).end(buffer);
-        });
+          const uploadResult: any = await new Promise((resolve, reject) => {
+            cloudinary.uploader
+              .upload_stream(
+                {
+                  folder: "listings",
+                  transformation: [
+                    { width: 800, height: 800, crop: "limit" },
+                    { quality: "auto" },
+                  ],
+                },
+                (error, result) => {
+                  if (error) return reject(error);
+                  resolve(result);
+                }
+              )
+              .end(buffer);
+          });
 
-        uploadedImages.push({
-          url: uploadResult.secure_url,
-          public_id: uploadResult.public_id
-        });
+          if (uploadResult?.secure_url) {
+            uploadedImages.push({
+              url: uploadResult.secure_url,
+              public_id: uploadResult.public_id,
+            });
+          }
+        } catch (imgErr) {
+          console.error("Image upload failed:", imgErr);
+          // skip this image, continue loop
+        }
       }
     }
 
-    // Create vendor if doesn't exist
-    let vendor = await Vendor.findOne({ clerkId: userId });
-    if (!vendor) {
-      vendor = new Vendor({
-        clerkId: userId,
-        ownerName: user.firstName + ' ' + user.lastName || 'Vendor',
-        ownerEmail: user.emailAddresses?.[0]?.emailAddress || 'vendor@example.com',
-        service_name: 'Vendor Service',
-        service_email: user.emailAddresses?.[0]?.emailAddress || 'vendor@example.com',
-        service_phone: '',
-        service_description: '',
-        establishedYear: new Date().getFullYear().toString(),
-        service_type: 'Other',
-        gstNumber: '',
-        panNumber: '',
-        bankName: '',
-        accountNumber: '',
-        ifscCode: '',
-        accountHolderName: '',
-        isVerified: false,
-        listings: [],
-      });
-      await vendor.save();
-    }
-
-    // Create new listing with uploaded images
+    // Create new listing
     const newListing = new Listing({
-      title: formData.get('title'),
-      description: formData.get('description'),
-      price: formData.get('price'),
-      location: formData.get('location'),
-      category: formData.get('category'),
-      features: formData.get('features') ? JSON.parse(formData.get('features') as string) : [],
-      images: uploadedImages,
+      title: formData.get("title"),
+      description: formData.get("description"),
+      price: formData.get("price"),
+      location: formData.get("location"),
+      category: formData.get("category"),
+      features: formData.get("features")
+        ? JSON.parse(formData.get("features") as string)
+        : [],
+      images: uploadedImages, // safe → empty if none uploaded
       owner: vendor._id,
     });
 
     await newListing.save();
 
-    // Update vendor's listings
-    if (!Array.isArray(vendor.listings)) {
-      vendor.listings = [];
-    }
+    // Add listing ref to vendor
     vendor.listings.push(newListing._id);
     await vendor.save();
 
     return NextResponse.json(
       {
-        message: "Listing created successfully",
-        listing: newListing
+        message:
+          uploadedImages.length > 0
+            ? "Listing created successfully with images"
+            : "Listing created successfully (no images uploaded)",
+        listing: newListing,
       },
       { status: 201 }
     );
-
   } catch (error: any) {
     console.error("Error creating listing:", error);
     return NextResponse.json(
       {
         message: "Failed to create listing",
         error: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
       },
       { status: 500 }
     );
   }
 }
+
 
 export async function PUT(req: NextRequest) {
   const auth = getAuth(req);
