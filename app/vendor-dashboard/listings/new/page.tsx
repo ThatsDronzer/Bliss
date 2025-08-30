@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Upload, Plus, X, DollarSign } from "lucide-react"
-
+import { ArrowLeft, Plus, X, DollarSign } from "lucide-react"
+import CloudinaryUploadWidget, { CloudinaryUploadWidgetInfo } from '@/components/CloudinaryUploadWidget';
 import { useAuth, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/components/ui/use-toast"
 import { useSession } from '@clerk/clerk-react';
 import { Badge } from "@/components/ui/badge"
@@ -39,10 +38,10 @@ export default function NewListingPage() {
     price: "",
     location: "",
     capacity: "",
-    images: [] as (string | File)[], // Now accepts both URLs and File objects
     terms: [] as string[],
     features: [] as Feature[],
   })
+  const [uploadedImages, setUploadedImages] = useState<CloudinaryUploadWidgetInfo[]>([]);
   const [newTerm, setNewTerm] = useState("")
   const [newFeature, setNewFeature] = useState({
     name: "",
@@ -116,19 +115,54 @@ export default function NewListingPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleAddTerm = () => {
-    if (newTerm.trim() && !formData.terms.includes(newTerm.trim())) {
-      handleInputChange("terms", [...formData.terms, newTerm.trim()])
-      setNewTerm("")
+const handleImageUploadSuccess = (imageInfo: CloudinaryUploadWidgetInfo) => {
+  setUploadedImages(prev => {
+    // Check if image with the same public_id already exists
+    const alreadyExists = prev.some(img => img.public_id === imageInfo.public_id);
+    
+    if (alreadyExists) {
+      console.warn("Duplicate image detected:", imageInfo.public_id);
+      return prev; // Return unchanged array if duplicate
+    }
+    
+    return [...prev, imageInfo];
+  });
+  
+  toast({
+    title: "Success",
+    description: "Image uploaded successfully!",
+  });
+};
+// Add this helper function
+const getUniqueImages = (images: CloudinaryUploadWidgetInfo[]) => {
+  const uniqueImages: CloudinaryUploadWidgetInfo[] = [];
+  const seen = new Set();
+  
+  for (const image of images) {
+    if (!seen.has(image.public_id)) {
+      seen.add(image.public_id);
+      uniqueImages.push(image);
     }
   }
+  
+  return uniqueImages;
+};
 
-  const handleRemoveTerm = (term: string) => {
-    handleInputChange(
-      "terms",
-      formData.terms.filter((t) => t !== term)
-    )
-  }
+// Use it when setting state or rendering
+const displayedImages = getUniqueImages(uploadedImages);
+
+  const handleImageUploadError = (error: any) => {
+    console.error("Upload error:", error);
+    toast({
+      title: "Upload Failed",
+      description: error.message || "Failed to upload image. Please try again.",
+      variant: "destructive",
+    });
+  };
+
+ const handleRemoveImage = (publicId: string) => {
+  setUploadedImages(prev => prev.filter(img => img.public_id !== publicId));
+};
 
   const handleAddFeature = () => {
     if (newFeature.name.trim() && newFeature.price.trim()) {
@@ -172,29 +206,12 @@ export default function NewListingPage() {
     }))
   }
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    // Convert FileList to array and add to formData
-    const newImages = Array.from(files);
-
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, ...newImages]
-    }));
-  };
-
-  const handleRemoveImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
-  };
-
   const validateForm = () => {
     if (!formData.title || !formData.description || !formData.category || !formData.price) {
       return "Please fill in all required fields (Title, Description, Category, Price)"
+    }
+    if (uploadedImages.length === 0) {
+      return "Please upload at least one image"
     }
     return null
   }
@@ -215,29 +232,22 @@ export default function NewListingPage() {
     setIsLoading(true);
 
     try {
-      const formDataToSend = new FormData();
-
-      // Append all regular fields
-      formDataToSend.append('title', formData.title);
-      formDataToSend.append('description', formData.description);
-      formDataToSend.append('price', formData.price);
-      formDataToSend.append('location', formData.location || '');
-      formDataToSend.append('category', formData.category || '');
-      formDataToSend.append('features', JSON.stringify(formData.features));
-
-      // Append each image file
-      formData.images.forEach((image) => {
-        if (image instanceof File) {
-          formDataToSend.append('images', image); // Note the plural 'images'
-        }
-      });
-
+      // Send JSON data instead of FormData
       const response = await fetch('/api/listing', {
         method: 'POST',
-        body: formDataToSend,
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          price: formData.price,
+          location: formData.location,
+          category: formData.category,
+          features: formData.features,
+          images: uploadedImages, // Send Cloudinary image objects
+        }),
       });
 
       if (!response.ok) {
@@ -336,16 +346,6 @@ export default function NewListingPage() {
                     placeholder="Enter location"
                   />
                 </div>
-
-                {/* <div className="space-y-2">
-                  <Label htmlFor="capacity">Capacity</Label>
-                  <Input
-                    id="capacity"
-                    value={formData.capacity}
-                    onChange={(e) => handleInputChange("capacity", e.target.value)}
-                    placeholder="e.g., 200 guests"
-                  />
-                </div> */}
               </div>
 
               <div className="space-y-2">
@@ -363,71 +363,44 @@ export default function NewListingPage() {
           </Card>
 
           {/* Images */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Images</CardTitle>
-              <CardDescription>Upload images of your venue or service</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500 mb-2">
-                  {formData.images.length > 0 ? 'Add more images' : 'Click to upload images'}
-                </p>
+       {/* Images */}
+<Card>
+  <CardHeader>
+    <CardTitle>Images</CardTitle>
+    <CardDescription>Upload images of your venue or service using Cloudinary</CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    <CloudinaryUploadWidget
+      onUploadSuccess={handleImageUploadSuccess}
+      onUploadError={handleImageUploadError}
+      multiple={true}
+      maxFiles={10}
+      folder="listings"
+    />
 
-                {/* File input with proper label connection */}
-                <input
-                  type="file"
-                  id="image-upload"
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  multiple
-                />
-
-                {/* Button that triggers the file input */}
-                <label
-                  htmlFor="image-upload"
-                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
-                >
-                  Choose Files
-                </label>
-                <p className="text-xs text-gray-400 mt-2">
-                  JPG, PNG, or WEBP (Max 5MB each)
-                </p>
-              </div>
-
-              {/* Image previews */}
-              {formData.images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {formData.images.map((image, index) => (
-                    <div key={index} className="relative group">
-                      {typeof image === 'string' ? (
-                        <img
-                          src={image}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                      ) : (
-                        <img
-                          src={URL.createObjectURL(image)}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg"
-                        />
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+    {/* Image previews - Use deduplicated array */}
+    {uploadedImages.length > 0 && (
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+        {getUniqueImages(uploadedImages).map((image, index) => (
+          <div key={`${image.public_id}-${index}`} className="relative group">
+            <img
+              src={image.secure_url}
+              alt={`Uploaded ${index + 1}`}
+              className="w-full h-24 object-cover rounded-lg"
+            />
+            <button
+              type="button"
+              onClick={() => handleRemoveImage(image.public_id)}
+              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
+  </CardContent>
+</Card>
 
           {/* Features & Services */}
           <Card>
@@ -521,45 +494,6 @@ export default function NewListingPage() {
             </CardContent>
           </Card>
 
-          {/* Terms & Conditions */}
-          {/* <Card>
-            <CardHeader>
-              <CardTitle>Terms & Conditions</CardTitle>
-              <CardDescription>Add any specific terms or conditions for your service</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  value={newTerm}
-                  onChange={(e) => setNewTerm(e.target.value)}
-                  placeholder="Add a term or condition"
-                  onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTerm())}
-                />
-                <Button type="button" onClick={handleAddTerm} disabled={!newTerm.trim()}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {formData.terms.length > 0 && (
-                <div className="space-y-2">
-                  {formData.terms.map((term, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <Checkbox checked={true} disabled />
-                      <span className="flex-1">{term}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTerm(term)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card> */}
-
           {/* Submit Buttons */}
           <div className="flex gap-4 justify-end">
             <Button
@@ -577,4 +511,4 @@ export default function NewListingPage() {
       </div>
     </div>
   );
-};
+}
