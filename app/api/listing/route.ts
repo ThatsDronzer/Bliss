@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ listings }, { status: 200 });
 }
 
-
 export async function POST(req: NextRequest) {
   const auth = getAuth(req);
   const userId = auth.userId;
@@ -43,50 +42,35 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  try {
-    const { users } = await import("@clerk/clerk-sdk-node");
-    const user = await users.getUser(userId);
-    const role = user.unsafeMetadata?.role;
+  const user = await users.getUser(userId);
+  const role = user.unsafeMetadata?.role;
 
-    if (role !== "vendor") {
-      return NextResponse.json(
-        { message: "User is not a vendor" },
-        { status: 403 }
-      );
-    }
+  if (role !== "vendor") {
+    return NextResponse.json(
+      { message: "User is not a vendor" },
+      { status: 403 }
+    );
+  }
 
-    await connectDB();
-
-    // Ensure vendor exists (no auto-create here)
-    const vendor = await Vendor.findOne({ clerkId: userId });
-    if (!vendor) {
-      return NextResponse.json(
-        {
-          message:
-            "Vendor profile not found. Please complete vendor setup before creating a listing.",
-        },
-        { status: 400 }
-      );
-    }
-
+  await connectDB();
 
   try {
-    // Parse JSON body
+    // Parse JSON body (images are already uploaded to Cloudinary via widget)
     const body = await req.json();
-    const {
-      title,
-      description,
-      price,
-      location,
-      category,
-      features,
-      images
+    const { 
+      title, 
+      description, 
+      price, 
+      location, 
+      category, 
+      features, 
+      images 
     } = body;
 
     // Validate required fields
     if (!title || !description || !price || !category) {
       return NextResponse.json(
-        { message: "Missing required fields: title, description, price, category" },
+        { message: "Missing required fields" },
         { status: 400 }
       );
     }
@@ -99,16 +83,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Remove duplicate images based on public_id
-    const uniqueImages = images.filter((image, index, array) =>
-      index === array.findIndex(img => img.public_id === image.public_id)
-    );
-
-    if (uniqueImages.length !== images.length) {
-      console.log("Removed duplicate images");
-    }
-
-    // Find or create vendor
+    // Create vendor if doesn't exist
     let vendor = await Vendor.findOne({ clerkId: userId });
     if (!vendor) {
       // Create new vendor if doesn't exist
@@ -134,62 +109,46 @@ export async function POST(req: NextRequest) {
       await vendor.save();
     }
 
-    // Create new listing with unique images
+    // Create new listing with Cloudinary images (already uploaded via widget)
     const newListing = new Listing({
-      title: title.trim(),
-      description: description.trim(),
-      price: parseFloat(price),
-      location: location?.trim() || '',
-      category: category.trim(),
-      features: Array.isArray(features) ? features : [],
-      images: uniqueImages, // Use deduplicated images
-    
+      title,
+      description,
+      price,
+      location: location || '',
+      category,
+      features: features || [],
+      images: images, // These are Cloudinary image objects {url, public_id}
       owner: vendor._id,
     });
 
-    try {
-      await newListing.save();
-      console.log("Listing saved successfully:", newListing);
-    } catch (error: any) {
-      console.error("Save error details:", error.errors); // Mongoose validation errors
-      throw error;
-    }
-
+    await newListing.save();
 
     // Update vendor's listings
-
     vendor.listings.push(newListing._id);
     await vendor.save();
-
-
-
+    
+    console.log(newListing);
+    
     return NextResponse.json(
       {
-        message:
-          uploadedImages.length > 0
-            ? "Listing created successfully with images"
-            : "Listing created successfully (no images uploaded)",
-        listing: newListing,
+        message: "Listing created successfully",
+        listing: newListing
       },
       { status: 201 }
     );
+
   } catch (error: any) {
     console.error("Error creating listing:", error);
     return NextResponse.json(
       {
         message: "Failed to create listing",
         error: error.message,
-
         ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
-
-       
-
       },
       { status: 500 }
     );
   }
 }
-
 
 export async function PUT(req: NextRequest) {
   const auth = getAuth(req);
@@ -205,16 +164,16 @@ export async function PUT(req: NextRequest) {
   await connectDB();
 
   try {
-    // Parse JSON body
+    // Parse JSON body instead of form data
     const body = await req.json();
-    const {
-      listingId,
-      title,
-      description,
-      price,
-      location,
-      category,
-      features,
+    const { 
+      listingId, 
+      title, 
+      description, 
+      price, 
+      location, 
+      category, 
+      features, 
       images, // Updated images array
       imagesToDelete // Array of public_ids to delete from Cloudinary
     } = body;
@@ -253,7 +212,7 @@ export async function PUT(req: NextRequest) {
           }
         })
       );
-
+      
       // Remove from listing images array
       listing.images = listing.images.filter(
         (img: any) => !imagesToDelete.includes(img.public_id)
@@ -331,16 +290,12 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Delete images from Cloudinary (this is why we still need cloudinary config)
+    // First delete images from Cloudinary
     if (listing.images && listing.images.length > 0) {
       await Promise.all(
         listing.images.map(async (image: any) => {
           if (image.public_id) {
-            try {
-              await cloudinary.uploader.destroy(image.public_id);
-            } catch (error) {
-              console.error(`Error deleting image ${image.public_id}:`, error);
-            }
+            await cloudinary.uploader.destroy(image.public_id);
           }
         })
       );
