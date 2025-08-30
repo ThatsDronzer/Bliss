@@ -85,28 +85,10 @@ export async function POST(req: NextRequest) {
 
     // Create vendor if doesn't exist
     let vendor = await Vendor.findOne({ clerkId: userId });
-    if (!vendor) {
-      // Create new vendor if doesn't exist
-      vendor = new Vendor({
-        clerkId: userId,
-        ownerName: `${user.firstName} ${user.lastName}`.trim() || 'Vendor',
-        ownerEmail: user.emailAddresses?.[0]?.emailAddress || 'vendor@example.com',
-        service_name: `${user.firstName}'s Service` || 'Vendor Service',
-        service_email: user.emailAddresses?.[0]?.emailAddress || 'vendor@example.com',
-        service_phone: '',
-        service_description: '',
-        establishedYear: new Date().getFullYear().toString(),
-        service_type: category || 'Other',
-        gstNumber: '',
-        panNumber: '',
-        bankName: '',
-        accountNumber: '',
-        ifscCode: '',
-        accountHolderName: '',
-        isVerified: false,
-        listings: [],
-      });
-      await vendor.save();
+     return NextResponse.json(
+        { message: "vendor not found" },
+        { status: 400 }
+      );
     }
 
     // Create new listing with Cloudinary images (already uploaded via widget)
@@ -148,7 +130,7 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+}}
 
 export async function PUT(req: NextRequest) {
   const auth = getAuth(req);
