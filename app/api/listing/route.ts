@@ -83,13 +83,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create vendor if doesn't exist
-    let vendor = await Vendor.findOne({ clerkId: userId });
-     return NextResponse.json(
-        { message: "vendor not found" },
-        { status: 400 }
-      );
-    }
+   
+let vendor = await Vendor.findOne({ clerkId: userId });
+if (!vendor) {
+  return NextResponse.json(
+    { message: "Vendor not found" },
+    { status: 400 }
+  );
+}
+
 
     // Create new listing with Cloudinary images (already uploaded via widget)
     const newListing = new Listing({
