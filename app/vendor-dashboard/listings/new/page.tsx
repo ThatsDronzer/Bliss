@@ -130,11 +130,6 @@ const handleImageUploadSuccess = (imageInfo: CloudinaryUploadWidgetInfo) => {
     
     return [...prev, imageInfo];
   });
-  
-  toast({
-    title: "Success",
-    description: "Image uploaded successfully!",
-  });
 };
 // Add this helper function
 const getUniqueImages = (images: CloudinaryUploadWidgetInfo[]) => {
@@ -156,11 +151,7 @@ const displayedImages = getUniqueImages(uploadedImages);
 
   const handleImageUploadError = (error: any) => {
     console.error("Upload error:", error);
-    toast({
-      title: "Upload Failed",
-      description: error.message || "Failed to upload image. Please try again.",
-      variant: "destructive",
-    });
+    toast.error("Image upload failed. Please try again.");
   };
 
  const handleRemoveImage = (publicId: string) => {
