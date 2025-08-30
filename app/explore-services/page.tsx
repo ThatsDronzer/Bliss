@@ -272,7 +272,40 @@ export default function ExploreServicesPage() {
   const [searchInput, setSearchInput] = useState(initialService)
   const [sortOption, setSortOption] = useState("recommended")
   const [showStickySearch, setShowStickySearch] = useState(false)
-  const [filteredVendors, setFilteredVendors] = useState<Vendor[]>(vendorsWithServices)
+  const [isLoading, setIsLoading] = useState(true)
+  const [vendors, setVendors] = useState<Vendor[]>([])
+  const [filteredVendors, setFilteredVendors] = useState<Vendor[]>([])
+
+  // Fetch vendor services data from API
+  useEffect(() => {
+    const fetchVendorServices = async () => {
+      setIsLoading(true)
+      try {
+        const response = await fetch('/api/vendor-services');
+        const data = await response.json();
+        
+        if (data && data.vendorServices) {
+          setVendors(data.vendorServices);
+          // Initially set filtered vendors to all vendors
+          setFilteredVendors(data.vendorServices);
+        } else {
+          // Fallback to mock data if API returns no data
+          console.log("No vendor services found, using mock data");
+          setVendors(vendorsWithServices);
+          setFilteredVendors(vendorsWithServices);
+        }
+      } catch (error) {
+        console.error("Error fetching vendor services:", error);
+        // Fallback to mock data on error
+        setVendors(vendorsWithServices);
+        setFilteredVendors(vendorsWithServices);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchVendorServices();
+  }, []);
 
   // Handle scroll to show/hide sticky search
   useEffect(() => {
@@ -299,7 +332,10 @@ export default function ExploreServicesPage() {
 
   // Filter vendors based on search and filters
   useEffect(() => {
-    let result = [...vendorsWithServices]
+    // Only filter when we have vendors data
+    if (!vendors.length) return;
+    
+    let result = [...vendors]
 
     // Filter by search query (search in vendor name, services, and descriptions)
     if (searchQuery) {
@@ -383,7 +419,7 @@ export default function ExploreServicesPage() {
     }
 
     setFilteredVendors(result)
-  }, [filters, searchQuery, sortOption])
+  }, [filters, searchQuery, sortOption, vendors])
 
   // Handle filter changes
   const handleFilterChange = (type: string, value: string) => {
@@ -676,7 +712,12 @@ export default function ExploreServicesPage() {
               </div>
             </div>
 
-            {filteredVendors.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-12">
+                <h3 className="text-lg font-medium mb-2">Loading services...</h3>
+                <p className="text-gray-500">Please wait while we fetch the latest vendor services</p>
+              </div>
+            ) : filteredVendors.length === 0 ? (
               <div className="text-center py-12">
                 <h3 className="text-lg font-medium mb-2">No vendors found</h3>
                 <p className="text-gray-500">Try adjusting your filters or search query</p>

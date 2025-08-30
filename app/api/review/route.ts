@@ -1,3 +1,31 @@
+import mongoose from 'mongoose';
+export async function DELETE(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    await dbConnect();
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Missing review id' }, { status: 400 });
+    }
+    // Only allow deletion if the review belongs to the user
+    const review = await Review.findById(id);
+    if (!review) {
+      return NextResponse.json({ error: 'Review not found' }, { status: 404 });
+    }
+    if (review.userId !== userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    await Review.deleteOne({ _id: new mongoose.Types.ObjectId(id) });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Review delete error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import dbConnect from '@/lib/config/db';

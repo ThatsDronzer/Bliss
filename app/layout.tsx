@@ -1,9 +1,9 @@
-import type React from "react"
+import React from "react"
 import "./globals.css"
 import { Inter } from "next/font/google"
 import { ChatLayout } from "@/components/layouts/chat-layout"
 import { Header } from "@/components/header"
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/sonner"
 import { ClerkProvider } from '@clerk/nextjs'
 
 const inter = Inter({ subsets: ["latin"] })
@@ -20,15 +20,15 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider>
-    <html lang="en">
-      <body className={inter.className}>
-        <ChatLayout>
-          <Header />
-          {children}
-          <Toaster />
-        </ChatLayout>
-      </body>
-    </html>
-   </ClerkProvider>
+      <html lang="en">
+        <body className={inter.className}>
+          <ChatLayout>
+            <Header />
+            {children}
+          </ChatLayout>
+          <Toaster/>
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }

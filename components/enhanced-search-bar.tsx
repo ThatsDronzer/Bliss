@@ -257,14 +257,14 @@ export function EnhancedSearchBar() {
     const params = new URLSearchParams()
 
     if (searchQuery.trim()) {
-      params.set("search", searchQuery)
+      params.set("service", searchQuery)
     }
 
     if (location !== "Select Location") {
       params.set("location", location)
     }
 
-    router.push(`/vendors${params.toString() ? `?${params.toString()}` : ""}`)
+    router.push(`/explore-services${params.toString() ? `?${params.toString()}` : ""}`)
     setShowSuggestions(false)
   }
 
@@ -274,19 +274,19 @@ export function EnhancedSearchBar() {
     if (suggestion.type === "category") {
       params.set("category", suggestion.title)
     } else if (suggestion.type === "vendor") {
-      params.set("search", suggestion.title)
+      params.set("service", suggestion.title)
     } else {
-      params.set("search", suggestion.title)
+      params.set("service", suggestion.title)
     }
 
     if (suggestion.subtitle && suggestion.subtitle !== suggestion.title) {
-      const locationMatch = suggestion.subtitle.match(/^([A-Za-z\s]+)/)
-      if (locationMatch) {
+      const locationMatch = suggestion.subtitle?.match(/^([A-Za-z\s]+)/)
+      if (locationMatch && locationMatch[1]) {
         params.set("location", locationMatch[1].trim())
       }
     }
 
-    router.push(`/vendors?${params.toString()}`)
+    router.push(`/explore-services?${params.toString()}`)
     setShowSuggestions(false)
   }
 

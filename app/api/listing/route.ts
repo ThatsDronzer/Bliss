@@ -31,6 +31,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ listings }, { status: 200 });
 }
 
+
 export async function POST(req: NextRequest) {
   const auth = getAuth(req);
   const userId = auth.userId;
@@ -42,17 +43,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const user = await users.getUser(userId);
-  const role = user.unsafeMetadata?.role;
+  try {
+    const { users } = await import("@clerk/clerk-sdk-node");
+    const user = await users.getUser(userId);
+    const role = user.unsafeMetadata?.role;
 
-  if (role !== "vendor") {
-    return NextResponse.json(
-      { message: "User is not a vendor" },
-      { status: 403 }
-    );
-  }
+    if (role !== "vendor") {
+      return NextResponse.json(
+        { message: "User is not a vendor" },
+        { status: 403 }
+      );
+    }
 
-  await connectDB();
+    await connectDB();
+
+    // Ensure vendor exists (no auto-create here)
+    const vendor = await Vendor.findOne({ clerkId: userId });
+    if (!vendor) {
+      return NextResponse.json(
+        {
+          message:
+            "Vendor profile not found. Please complete vendor setup before creating a listing.",
+        },
+        { status: 400 }
+      );
+    }
+
 
   try {
     // Parse JSON body
@@ -127,6 +143,7 @@ export async function POST(req: NextRequest) {
       category: category.trim(),
       features: Array.isArray(features) ? features : [],
       images: uniqueImages, // Use deduplicated images
+    
       owner: vendor._id,
     });
 
@@ -138,7 +155,9 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
+
     // Update vendor's listings
+
     vendor.listings.push(newListing._id);
     await vendor.save();
 
@@ -146,24 +165,31 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       {
-        message: "Listing created successfully",
-        listing: newListing
+        message:
+          uploadedImages.length > 0
+            ? "Listing created successfully with images"
+            : "Listing created successfully (no images uploaded)",
+        listing: newListing,
       },
       { status: 201 }
     );
-
   } catch (error: any) {
     console.error("Error creating listing:", error);
     return NextResponse.json(
       {
         message: "Failed to create listing",
         error: error.message,
+
         ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+
+       
+
       },
       { status: 500 }
     );
   }
 }
+
 
 export async function PUT(req: NextRequest) {
   const auth = getAuth(req);

@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LogOut, Menu, ShoppingCart, Search } from "lucide-react"
+import { LogOut, Menu, ShoppingCart, Search, User, Trash2, AlertTriangle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -13,7 +13,30 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { CoinDisplay } from "@/components/ui/coin-display"
 import { CoinService } from "@/lib/coin-service"
-import { SignedIn, SignedOut, useClerk, UserButton, useAuth, useUser } from "@clerk/nextjs"
+import { SignedIn, SignedOut, useClerk, useAuth, useUser } from "@clerk/nextjs"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { toast } from "sonner"
+import { updateUserToVendor } from "@/app/role-handler/action"
 
 export function Header() {
   const router = useRouter()
@@ -40,9 +63,16 @@ export function Header() {
   }, [isSignedIn, user])
 
   const handleLogout = async () => {
-    await signOut()
-    router.push("/")
+    try {
+      await signOut()
+      router.push("/")
+    } catch (error) {
+      console.error('Failed to sign out:', error)
+      toast.error('Failed to sign out')
+    }
   }
+
+
 
   const getDashboardLink = () => {
     // Route to appropriate dashboard based on user role
@@ -55,9 +85,26 @@ export function Header() {
     }
   }
 
-  const handleBecomeVendor = async () => {
-    await signOut(); // logs out current user
-    router.push("/sign-up?role=vendor"); // redirect to vendor sign up
+  // State for Become Vendor confirmation dialog
+  const [showBecomeVendorDialog, setShowBecomeVendorDialog] = useState(false);
+  const [isBecomingVendor, setIsBecomingVendor] = useState(false);
+
+  const handleBecomeVendor = () => {
+    setShowBecomeVendorDialog(true);
+  };
+
+  const handleConfirmBecomeVendor = async () => {
+    setIsBecomingVendor(true);
+    try {
+      await updateUserToVendor();
+      toast.success("Your account is now a vendor!");
+      router.refresh();
+    } catch (error) {
+      toast.error("Failed to update account. Please try again.");
+    } finally {
+      setIsBecomingVendor(false);
+      setShowBecomeVendorDialog(false);
+    }
   };
 
   const handleSignIn = async () => {
@@ -165,23 +212,73 @@ export function Header() {
                     Dashboard
                   </Button>
 
-                  {/* Only show "Become a Vendor" button for regular users */}
+                  {/* Only show "Become a Vendor" button for regular users, with confirmation dialog */}
                   {userRole === "user" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleBecomeVendor}
-                      className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
-                    >
-                      Become a Vendor
-                    </Button>
+                    <>
+                      <Button
+                        type="button"
+                        className="px-4 py-2 font-semibold text-white bg-pink-600 rounded-lg hover:bg-pink-700 transition-colors"
+                        onClick={handleBecomeVendor}
+                      >
+                        Become a Vendor
+                      </Button>
+                      <AlertDialog open={showBecomeVendorDialog} onOpenChange={setShowBecomeVendorDialog}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2">
+                              <AlertTriangle className="h-5 w-5 text-pink-600" />
+                              Change Account to Vendor?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action will change your account from <span className="font-semibold text-pink-600">User</span> to <span className="font-semibold text-pink-600">Vendor</span>.<br />
+                              You will be able to list your services, but some user features may be restricted.<br />
+                              Are you sure you want to continue?
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isBecomingVendor}>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleConfirmBecomeVendor}
+                              disabled={isBecomingVendor}
+                              className="bg-pink-600 hover:bg-pink-700"
+                            >
+                              {isBecomingVendor ? "Changing..." : "Confirm"}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
                   )}
 
                   {/* Removed Vendor Dashboard button for vendors */}
                 </div>
 
-                {/* User Button */}
-                <UserButton />
+                {/* Custom User Button */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user?.imageUrl} alt={user?.fullName || ""} />
+                        <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none">{user?.fullName}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {user?.primaryEmailAddress?.emailAddress}
+                        </p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sign Out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </>
             </SignedIn>
 
@@ -202,14 +299,7 @@ export function Header() {
                 >
                   Sign Up
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBecomeVendor}
-                  className="text-gray-700 hover:text-pink-600 hover:bg-pink-50 transition-all duration-200"
-                >
-                  Vendor Login
-                </Button>
+
               </div>
             </SignedOut>
 
@@ -323,13 +413,7 @@ export function Header() {
                       >
                         Sign Up
                       </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={handleBecomeVendor}
-                        className="text-gray-700 hover:text-pink-600 hover:bg-pink-50"
-                      >
-                        Vendor Login
-                      </Button>
+
                     </div>
                   </SignedOut>
                 </div>

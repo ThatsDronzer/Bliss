@@ -8,12 +8,21 @@ export default function SignUpPage() {
   const role = searchParams.get("role") || "user";
 
   return (
-    <SignUp
-      path="/sign-up"
-      routing="path"
-      signInUrl={`/sign-in?role=${role}`}
-      forceRedirectUrl={`/role-handler?role=${role}`}  // 👈 handle role update
-      redirectUrl="/"
-    />
+    <div className="flex min-h-screen items-center justify-center">
+      <SignUp
+        path="/sign-up"
+        routing="path"
+        signInUrl={`/sign-in?role=${role}`}
+        forceRedirectUrl={"/"}
+        appearance={{
+          elements: {
+            formButtonPrimary: "bg-pink-600 hover:bg-pink-700",
+          },
+        }}
+        unsafeMetadata={{
+          role: role, // ✅ Set role immediately at signup
+        }}
+      />
+    </div>
   );
 }
