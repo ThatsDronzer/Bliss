@@ -19,9 +19,67 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+// Mock bookings data for demonstration
+const mockBookings = [
+  {
+    id: "booking-1",
+    vendorId: "venue-example",
+    vendorName: "Royal Wedding Palace",
+    vendorCategory: "Venue",
+    bookingDate: "2023-12-15",
+    status: "Confirmed",
+    amount: "₹2,50,000",
+    paymentStatus: "Paid",
+    image: "/placeholder.svg?height=200&width=300&text=Venue",
+    clientName: "Priya & Rahul",
+    clientPhone: "+91 98765 43210",
+    clientEmail: "priya.sharma@example.com",
+    eventDetails: "Wedding ceremony and reception",
+    guestCount: 250,
+    createdAt: "2023-10-15T10:30:00",
+    platformFee: "₹25,000",
+  },
+  {
+    id: "booking-2",
+    vendorId: "photographer-1",
+    vendorName: "Capture Moments",
+    vendorCategory: "Photography",
+    bookingDate: "2023-12-15",
+    status: "Confirmed",
+    amount: "₹75,000",
+    paymentStatus: "Paid",
+    image: "/placeholder.svg?height=200&width=300&text=Photo",
+    clientName: "Priya & Rahul",
+    clientPhone: "+91 98765 43210",
+    clientEmail: "priya.sharma@example.com",
+    eventDetails: "Wedding photography package",
+    createdAt: "2023-10-16T11:45:00",
+    platformFee: "₹7,500",
+  },
+  {
+    id: "booking-3",
+    vendorId: "caterer-1",
+    vendorName: "Spice Delight Catering",
+    vendorCategory: "Catering",
+    bookingDate: "2023-12-14",
+    status: "Pending",
+    amount: "₹1,20,000",
+    paymentStatus: "Pending",
+    image: "/placeholder.svg?height=200&width=300&text=Food",
+    clientName: "Priya & Rahul",
+    clientPhone: "+91 98765 43210",
+    clientEmail: "priya.sharma@example.com",
+    eventDetails: "Wedding dinner for 250 guests",
+    guestCount: 250,
+    createdAt: "2023-10-20T09:15:00",
+    platformFee: "₹12,000",
+  }
+];
+
 export default function BookingsPage() {
   const router = useRouter()
-  const { isAuthenticated } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
+  const { user } = useUser()
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedBooking, setSelectedBooking] = useState<any>(null)
@@ -29,12 +87,12 @@ export default function BookingsPage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/")
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in")
     }
-  }, [isAuthenticated, router])
+  }, [isLoaded, isSignedIn, router])
 
-  if (!isAuthenticated) {
+  if (!isSignedIn) {
     return null
   }
 

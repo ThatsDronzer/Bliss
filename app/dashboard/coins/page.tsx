@@ -19,18 +19,19 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 export default function CoinsPage() {
   const router = useRouter()
-  const { user, isAuthenticated } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
+  const { user } = useUser()
   const [balance, setBalance] = useState(0)
   const [transactions, setTransactions] = useState<CoinTransaction[]>([])
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login")
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in")
       return
     }
 
     const fetchCoinData = async () => {
-      if (user) {
+      if (isLoaded && isSignedIn && user) {
         // Handle coin expiry first
         await CoinService.handleCoinExpiry(user.id)
         
@@ -46,9 +47,9 @@ export default function CoinsPage() {
     }
 
     fetchCoinData()
-  }, [isAuthenticated, user, router])
+  }, [isLoaded, isSignedIn, user, router])
 
-  if (!isAuthenticated || !user) {
+  if (!isSignedIn || !user) {
     return null
   }
 

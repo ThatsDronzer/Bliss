@@ -19,7 +19,8 @@ import {
 
 export default function SettingsPage() {
   const router = useRouter()
-  const { isAuthenticated, user, logout } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
+  const { user } = useUser()
   const [settings, setSettings] = useState({
     theme: "light",
     language: "en",
@@ -33,12 +34,12 @@ export default function SettingsPage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/")
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in")
     }
-  }, [isAuthenticated, router])
+  }, [isLoaded, isSignedIn, router])
 
-  if (!isAuthenticated || !user) {
+  if (!isSignedIn || !user) {
     return null
   }
 

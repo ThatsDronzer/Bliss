@@ -13,18 +13,20 @@ import { Badge } from "@/components/ui/badge"
 
 export default function PaymentsPage() {
   const router = useRouter()
-  const { isAuthenticated, payments } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
+  const { user } = useUser()
+  const [payments, setPayments] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/")
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in")
     }
-  }, [isAuthenticated, router])
+  }, [isLoaded, isSignedIn, router])
 
-  if (!isAuthenticated) {
+  if (!isSignedIn) {
     return null
   }
 
