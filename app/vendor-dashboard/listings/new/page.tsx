@@ -51,7 +51,8 @@ export default function NewListingPage() {
     price: "",
     description: "",
   })
-
+  const [tempImageIds, setTempImageIds] = useState<string[]>([]);
+  const [isSubmitSuccessful, setIsSubmitSuccessful] = useState(false);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -87,6 +88,32 @@ export default function NewListingPage() {
     }
   }, [isLoaded, isSignedIn, userRole, router])
 
+  useEffect(() => {
+    return () => {
+      if (uploadedImages.length > 0 && !isSubmitSuccessful) {
+        // Clean up images when component unmounts without successful submission
+        cleanupUnusedImages();
+      }
+    };
+  }, [uploadedImages, isSubmitSuccessful]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (uploadedImages.length > 0 && !isSubmitSuccessful) {
+        e.preventDefault();
+        e.returnValue = '';
+
+        // Note: We can't make async requests in beforeunload, 
+        // so we'll rely on the API cleanup when the user navigates away
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [uploadedImages, isSubmitSuccessful]);
 
   if (!isLoaded || !isSignedIn || userRole !== "vendor" || tokenLoading) {
     return (
@@ -118,45 +145,64 @@ export default function NewListingPage() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-const handleImageUploadSuccess = (imageInfo: CloudinaryUploadWidgetInfo) => {
-  setUploadedImages(prev => {
-    // Check if image with the same public_id already exists
-    const alreadyExists = prev.some(img => img.public_id === imageInfo.public_id);
-    
-    if (alreadyExists) {
-      console.warn("Duplicate image detected:", imageInfo.public_id);
-      return prev; // Return unchanged array if duplicate
-    }
-    
-    return [...prev, imageInfo];
-  });
-};
-// Add this helper function
-const getUniqueImages = (images: CloudinaryUploadWidgetInfo[]) => {
-  const uniqueImages: CloudinaryUploadWidgetInfo[] = [];
-  const seen = new Set();
-  
-  for (const image of images) {
-    if (!seen.has(image.public_id)) {
-      seen.add(image.public_id);
-      uniqueImages.push(image);
-    }
-  }
-  
-  return uniqueImages;
-};
+  const handleImageUploadSuccess = (imageInfo: CloudinaryUploadWidgetInfo) => {
+    setUploadedImages(prev => {
+      const alreadyExists = prev.some(img => img.public_id === imageInfo.public_id);
+      if (alreadyExists) return prev;
 
-// Use it when setting state or rendering
-const displayedImages = getUniqueImages(uploadedImages);
+      // Track the image ID for potential cleanup
+      setTempImageIds(prevIds => [...prevIds, imageInfo.public_id]);
+      return [...prev, imageInfo];
+    });
+  };
+  const cleanupUnusedImages = async () => {
+    if (tempImageIds.length === 0) return;
+
+    try {
+      const response = await fetch('/api/cleanup-images', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ imageIds: tempImageIds }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to cleanup images');
+      } else {
+        setTempImageIds([]); // Clear temp IDs after cleanup
+      }
+    } catch (error) {
+      console.error('Error cleaning up images:', error);
+    }
+  };
+
+  const getUniqueImages = (images: CloudinaryUploadWidgetInfo[]) => {
+    const uniqueImages: CloudinaryUploadWidgetInfo[] = [];
+    const seen = new Set();
+
+    for (const image of images) {
+      if (!seen.has(image.public_id)) {
+        seen.add(image.public_id);
+        uniqueImages.push(image);
+      }
+    }
+
+    return uniqueImages;
+  };
+
+  // Use it when setting state or rendering
+  const displayedImages = getUniqueImages(uploadedImages);
 
   const handleImageUploadError = (error: any) => {
     console.error("Upload error:", error);
     toast.error("Image upload failed. Please try again.");
   };
 
- const handleRemoveImage = (publicId: string) => {
-  setUploadedImages(prev => prev.filter(img => img.public_id !== publicId));
-};
+  const handleRemoveImage = (publicId: string) => {
+    setUploadedImages(prev => prev.filter(img => img.public_id !== publicId));
+  };
 
   const handleAddFeature = () => {
     if (newFeature.name.trim() && newFeature.price.trim()) {
@@ -208,17 +254,9 @@ const displayedImages = getUniqueImages(uploadedImages);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const validationError = validateForm();
-    if (validationError) {
-      toast.error(validationError);
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Send JSON data instead of FormData
       const response = await fetch('/api/listing', {
         method: 'POST',
         headers: {
@@ -232,18 +270,20 @@ const displayedImages = getUniqueImages(uploadedImages);
           location: formData.location,
           category: formData.category,
           features: formData.features,
-          images: uploadedImages, // Send Cloudinary image objects
+          images: uploadedImages,
+          tempImageIds: tempImageIds, // Send temp IDs for cleanup
         }),
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        setIsSubmitSuccessful(true);
+        setTempImageIds([]); // Clear temp IDs after successful submission
+        toast.success("Listing created successfully");
+        router.push("/vendor-dashboard/listings");
+      } else {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to create listing');
       }
-
-      const data = await response.json();
-      toast.success("Listing created successfully")
-      router.push("/vendor-dashboard/listings");
     } catch (err) {
       console.error("Error in handleSubmit:", err);
       toast.error(err instanceof Error ? err.message : "An unexpected error occurred");
@@ -252,6 +292,12 @@ const displayedImages = getUniqueImages(uploadedImages);
     }
   };
 
+  const handleCancel = async () => {
+    if (uploadedImages.length > 0) {
+      await cleanupUnusedImages();
+    }
+    router.push("/vendor-dashboard/listings");
+  };
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center gap-4 mb-8">
@@ -345,44 +391,44 @@ const displayedImages = getUniqueImages(uploadedImages);
           </Card>
 
           {/* Images */}
-       {/* Images */}
-<Card>
-  <CardHeader>
-    <CardTitle>Images</CardTitle>
-    <CardDescription>Upload images of your venue or service using Cloudinary</CardDescription>
-  </CardHeader>
-  <CardContent className="space-y-4">
-    <CloudinaryUploadWidget
-      onUploadSuccess={handleImageUploadSuccess}
-      onUploadError={handleImageUploadError}
-      multiple={true}
-      maxFiles={10}
-      folder="listings"
-    />
+          {/* Images */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Images</CardTitle>
+              <CardDescription>Upload images of your venue or service using Cloudinary</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <CloudinaryUploadWidget
+                onUploadSuccess={handleImageUploadSuccess}
+                onUploadError={handleImageUploadError}
+                multiple={true}
+                maxFiles={10}
+                folder="listings"
+              />
 
-    {/* Image previews - Use deduplicated array */}
-    {uploadedImages.length > 0 && (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-        {getUniqueImages(uploadedImages).map((image, index) => (
-          <div key={`${image.public_id}-${index}`} className="relative group">
-            <img
-              src={image.secure_url}
-              alt={`Uploaded ${index + 1}`}
-              className="w-full h-24 object-cover rounded-lg"
-            />
-            <button
-              type="button"
-              onClick={() => handleRemoveImage(image.public_id)}
-              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </div>
-        ))}
-      </div>
-    )}
-  </CardContent>
-</Card>
+              {/* Image previews - Use deduplicated array */}
+              {uploadedImages.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                  {getUniqueImages(uploadedImages).map((image, index) => (
+                    <div key={`${image.public_id}-${index}`} className="relative group">
+                      <img
+                        src={image.secure_url}
+                        alt={`Uploaded ${index + 1}`}
+                        className="w-full h-24 object-cover rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(image.public_id)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Features & Services */}
           <Card>
@@ -481,7 +527,7 @@ const displayedImages = getUniqueImages(uploadedImages);
             <Button
               type="button"
               variant="outline"
-              onClick={() => router.push("/vendor-dashboard/listings")}
+              onClick={handleCancel}
             >
               Cancel
             </Button>
