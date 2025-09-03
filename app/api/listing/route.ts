@@ -7,6 +7,26 @@ import { users } from "@clerk/clerk-sdk-node";
 import cloudinary from "@/lib/cloudinary";
 import type { NextRequest } from "next/server";
 
+interface CloudinaryImage {
+  url: string;
+  public_id: string;
+  [key: string]: any;
+}
+async function cleanupImages(publicIds: string[]) {
+  try {
+    await Promise.all(
+      publicIds.map(async (publicId: string) => {
+        try {
+          await cloudinary.uploader.destroy(publicId);
+        } catch (error) {
+          console.error(`Error deleting image ${publicId}:`, error);
+        }
+      })
+    );
+  } catch (error) {
+    console.error("Error in cleanupImages:", error);
+  }
+}
 export async function GET(req: NextRequest) {
   const auth = getAuth(req);
   const userId = auth.userId;
@@ -54,8 +74,10 @@ export async function POST(req: NextRequest) {
 
   await connectDB();
 
+  let tempImageIds: string[] = [];
+  
   try {
-    // Parse JSON body (images are already uploaded to Cloudinary via widget)
+    // Parse JSON body
     const body = await req.json();
     const { 
       title, 
@@ -64,11 +86,21 @@ export async function POST(req: NextRequest) {
       location, 
       category, 
       features, 
-      images 
+      images,
+      tempImageIds: sentTempImageIds // Get temp IDs from frontend
     } = body;
+
+    // Store temp IDs for cleanup if needed
+    if (sentTempImageIds && Array.isArray(sentTempImageIds)) {
+      tempImageIds = sentTempImageIds;
+    }
 
     // Validate required fields
     if (!title || !description || !price || !category) {
+      // Clean up uploaded images if validation fails
+      if (tempImageIds.length > 0) {
+        await cleanupImages(tempImageIds);
+      }
       return NextResponse.json(
         { message: "Missing required fields" },
         { status: 400 }
@@ -77,23 +109,27 @@ export async function POST(req: NextRequest) {
 
     // Validate images
     if (!images || !Array.isArray(images) || images.length === 0) {
+      if (tempImageIds.length > 0) {
+        await cleanupImages(tempImageIds);
+      }
       return NextResponse.json(
         { message: "At least one image is required" },
         { status: 400 }
       );
     }
 
-   
-let vendor = await Vendor.findOne({ clerkId: userId });
-if (!vendor) {
-  return NextResponse.json(
-    { message: "Vendor not found" },
-    { status: 400 }
-  );
-}
+    let vendor = await Vendor.findOne({ clerkId: userId });
+    if (!vendor) {
+      if (tempImageIds.length > 0) {
+        await cleanupImages(tempImageIds);
+      }
+      return NextResponse.json(
+        { message: "Vendor not found" },
+        { status: 400 }
+      );
+    }
 
-
-    // Create new listing with Cloudinary images (already uploaded via widget)
+    // Create new listing with Cloudinary images
     const newListing = new Listing({
       title,
       description,
@@ -111,7 +147,15 @@ if (!vendor) {
     vendor.listings.push(newListing._id);
     await vendor.save();
     
-    console.log(newListing);
+    // Clean up any temporary images that weren't used
+    if (tempImageIds.length > 0) {
+      const usedImageIds = images.map((img: CloudinaryImage) => img.public_id);
+      const imagesToDelete = tempImageIds.filter((id: string) => !usedImageIds.includes(id));
+      
+      if (imagesToDelete.length > 0) {
+        await cleanupImages(imagesToDelete);
+      }
+    }
     
     return NextResponse.json(
       {
@@ -122,6 +166,11 @@ if (!vendor) {
     );
 
   } catch (error: any) {
+    // Clean up images on any error
+    if (tempImageIds.length > 0) {
+      await cleanupImages(tempImageIds);
+    }
+    
     console.error("Error creating listing:", error);
     return NextResponse.json(
       {
