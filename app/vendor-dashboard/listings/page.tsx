@@ -339,10 +339,10 @@ export default function VendorListingsPage() {
                          <Button 
                variant="outline" 
                size="sm"
-               onClick={() => router.push(`/vendor-dashboard/listings/${listing._id}/view`)}
+               onClick={() => router.push(`/services/${listing._id}`)}
              >
                <Eye className="mr-1 h-3 w-3" />
-               View
+               View Service
              </Button>
             <Button
               variant="outline"
