@@ -496,6 +496,8 @@ export default function ExploreServicesPage() {
                   <option value="Bangalore">Bangalore</option>
                   <option value="Chennai">Chennai</option>
                   <option value="Hyderabad">Hyderabad</option>
+                  <option value="Kanpur">Kanpur</option>
+                  <option value="Jaipur">Jaipur</option>
                 </select>
                 <ChevronDown className="h-4 w-4 text-gray-400 absolute right-3 pointer-events-none" />
               </div>
@@ -543,6 +545,8 @@ export default function ExploreServicesPage() {
                   <option value="Bangalore">Bangalore</option>
                   <option value="Chennai">Chennai</option>
                   <option value="Hyderabad">Hyderabad</option>
+                  <option value="Kanpur">Kanpur</option>
+                  <option value="Jaipur">Jaipur</option>
                 </select>
                 <ChevronDown className="h-4 w-4 text-gray-400 absolute right-3 pointer-events-none" />
               </div>

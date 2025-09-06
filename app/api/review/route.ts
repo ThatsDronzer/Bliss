@@ -43,8 +43,18 @@ export async function POST(req: NextRequest) {
     const { targetId, targetType, rating, comment, name, avatar } = await req.json();
 
     // Validate required fields
-    if (!targetId || !targetType || !rating || !comment || !name || !avatar) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const missingFields = [];
+    if (!targetId) missingFields.push('targetId');
+    if (!targetType) missingFields.push('targetType');
+    if (!rating) missingFields.push('rating');
+    if (!comment) missingFields.push('comment');
+    if (!name) missingFields.push('name');
+    
+    if (missingFields.length > 0) {
+      return NextResponse.json({ 
+        error: 'Missing required fields', 
+        missingFields 
+      }, { status: 400 });
     }
 
     // Validate rating range
