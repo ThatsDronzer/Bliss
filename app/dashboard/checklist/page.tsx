@@ -23,7 +23,9 @@ import { Progress } from "@/components/ui/progress"
 
 export default function ChecklistPage() {
   const router = useRouter()
-  const { isAuthenticated, checklist, addTask, toggleTaskCompletion, deleteTask } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
+  const { user } = useUser()
+  const [checklist, setChecklist] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -37,12 +39,12 @@ export default function ChecklistPage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/")
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in")
     }
-  }, [isAuthenticated, router])
+  }, [isLoaded, isSignedIn, router])
 
-  if (!isAuthenticated) {
+  if (!isSignedIn) {
     return null
   }
 

@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "@/components/ui/use-toast"
+import { mockVendorReviews } from "@/lib/auth"
 
 export default function VendorReviewsPage() {
   const router = useRouter()
@@ -42,10 +43,29 @@ export default function VendorReviewsPage() {
     }
   }, [isLoaded, isSignedIn, userRole, router])
 
+  // Function to respond to a review
+  const respondToReview = (reviewId: string, responseText: string) => {
+    // In a real app, this would make an API call to update the review
+    console.log(`Responding to review ${reviewId}: ${responseText}`)
+    // For demo purposes, we'll update the reviews in memory
+    const updatedReviews = [...vendorReviews]
+    const reviewIndex = updatedReviews.findIndex(r => r.id === reviewId)
+    if (reviewIndex !== -1) {
+      updatedReviews[reviewIndex] = {
+        ...updatedReviews[reviewIndex],
+        response: responseText,
+        hasResponse: true
+      }
+    }
+  }
+
   if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null
   }
 
+  // Use the mock vendor reviews for demonstration
+  const vendorReviews = mockVendorReviews
+  
   // Filter reviews based on search, rating, and response status
   const filteredReviews = vendorReviews.filter((review) => {
     const matchesSearch =

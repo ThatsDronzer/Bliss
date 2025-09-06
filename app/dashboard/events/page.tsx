@@ -15,7 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export default function EventsPage() {
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 

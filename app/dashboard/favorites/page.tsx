@@ -13,17 +13,19 @@ import { toast } from "@/components/ui/use-toast"
 
 export default function FavoritesPage() {
   const router = useRouter()
-  const { isAuthenticated, favorites, toggleFavorite } = useAuth()
+  const { isLoaded, isSignedIn } = useAuth()
+  const { user } = useUser()
+  const [favorites, setFavorites] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/")
+    if (isLoaded && !isSignedIn) {
+      router.push("/sign-in")
     }
-  }, [isAuthenticated, router])
+  }, [isLoaded, isSignedIn, router])
 
-  if (!isAuthenticated) {
+  if (!isSignedIn) {
     return null
   }
 

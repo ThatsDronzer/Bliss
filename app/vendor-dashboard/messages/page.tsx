@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { mockMessages } from "@/lib/auth"
 
 export default function VendorMessagesPage() {
   const router = useRouter()
@@ -32,19 +33,32 @@ export default function VendorMessagesPage() {
     }
   }, [isLoaded, isSignedIn, userRole, router])
 
+  // Message helper functions
+  const markMessageAsRead = (messageId: string) => {
+    // In a real app, this would make an API call to mark the message as read
+    console.log(`Marking message ${messageId} as read`)
+    // For now we can just update the local state if needed
+  }
+
+  const sendMessage = (conversationId: string, message: string, sender: string) => {
+    // In a real app, this would make an API call to send the message
+    console.log(`Sending message to conversation ${conversationId}: ${message}`)
+    // For now we can just update the local state if needed
+  }
+
   // Scroll to bottom of messages when conversation changes or new message is sent
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
-  }, [selectedConversation, messages])
+  }, [selectedConversation])
 
   if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null
   }
 
   // Filter messages based on search and only show messages for this vendor
-  const filteredMessages = messages
+  const filteredMessages = mockMessages
     .filter((message) => message.vendorId === "venue-example")
     .filter((message) => message.clientName.toLowerCase().includes(searchQuery.toLowerCase()))
 

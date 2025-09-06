@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
-import { useToast } from "@/components/ui/use-toast";
+import {toast} from "sonner";
 import {
   Plus,
   Edit,
@@ -34,7 +34,6 @@ import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
 export default function VendorListingsPage() {
   const { session } = useSession();
   const [token, setToken] = useState<string | null>(null);
-  const { toast } = useToast();
   const [listingsData, setListingsData] = useState<{
     active: Listing[];
     draft: Listing[];
@@ -229,60 +228,48 @@ export default function VendorListingsPage() {
   };
  const handleDelete = async (listingId: string) => {
   if (!token) {
-    toast({
-      title: "Unauthorized",
-      description: "You must be logged in to delete a listing.",
-      variant: "destructive",
-    });
+    toast.error("User not authenticated");
     return;
   }
 
-  // Use toast instead of confirm()
-  toast({
-    title: "Deleting listing...",
-    description: "Please wait while we delete your listing.",
-  });
+  // Create a toast promise that shows loading until the operation completes
+  toast.promise(
+    (async () => {
+      try {
+        const res = await fetch("/api/listing", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ listingId }),
+        });
 
-  try {
-    const res = await fetch("/api/listing", {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ listingId }),
-    });
+        const data = await res.json();
 
-    const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to delete listing");
+        }
 
-    if (!res.ok) {
-      toast({
-        title: "Failed to delete",
-        description: data.message || "Something went wrong.",
-        variant: "destructive",
-      });
-      return;
+        // Update UI
+        setListingsData((prev) => ({
+          ...prev,
+          active: prev.active.filter((l) => l._id !== listingId),
+          inactive: prev.inactive.filter((l) => l._id !== listingId),
+          draft: prev.draft.filter((l) => l._id !== listingId),
+        }));
+
+        return "Listing deleted successfully";
+      } catch (error) {
+        throw new Error(error.message || "An error occurred while deleting the listing");
+      }
+    })(),
+    {
+      loading: "Deleting listing...",
+      success: (message) => message,
+      error: (error) => error.message,
     }
-
-    // Update UI
-    setListingsData((prev) => ({
-      ...prev,
-      active: prev.active.filter((l) => l._id !== listingId),
-      inactive: prev.inactive.filter((l) => l._id !== listingId),
-      draft: prev.draft.filter((l) => l._id !== listingId),
-    }));
-
-    toast({
-      title: "Listing deleted",
-      description: "The listing was successfully removed.",
-    });
-  } catch (error) {
-    toast({
-      title: "Error",
-      description: "Something went wrong while deleting.",
-      variant: "destructive",
-    });
-  }
+  );
 };
 
 
@@ -411,10 +398,7 @@ export default function VendorListingsPage() {
                     <AlertDialogAction
                       onClick={() => {
                         setOpenDeactivate(false);
-                        toast({
-                          title: "Listing deactivated (UI only)",
-                          description: "This is a UI/UX demo. No backend call was made.",
-                        });
+                        toast.success("Deactivate functionality not implemented yet.");
                       }}
                     >
                       Deactivate
