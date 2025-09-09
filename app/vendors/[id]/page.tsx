@@ -1,7 +1,9 @@
 "use client"
 
-import { mockVendorData, type VendorDetails } from '@/lib/types/vendor'
-import { useState } from "react"
+import { type VendorDetails, type Service, type Review } from '@/lib/types/vendor'
+import { useState, useEffect } from "react"
+import { useParams } from "next/navigation"
+import Link from 'next/link'
 import { ServiceCard } from '@/components/vendor/ServiceCard'
 import { ReviewCard } from '@/components/vendor/ReviewCard'
 import { SelectedServicesSummary } from '@/components/vendor/SelectedServicesSummary'
@@ -16,29 +18,90 @@ import { ServiceBooking } from "@/components/home-service/ServiceBooking"
 import { Phone, Mail, MapIcon, Star, Heart } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google"
+import Image from "next/image"
 const inter = Inter({ subsets: ["latin"] })
 
 export default function VendorDetailsPage() {
-  // Always use mockVendorData for demo
-  const [vendor] = useState<VendorDetails>(mockVendorData)
-  const [showBooking, setShowBooking] = useState(false)
-  const [showPayment, setShowPayment] = useState(false)
-  const [bookingData, setBookingData] = useState<any>(null)
-  const [isFavorite, setIsFavorite] = useState(false)
-  const { totalPrice, toggleService, isServiceSelected, selectedServices } = useServiceSelection()
+  const params = useParams();
+  const [vendor, setVendor] = useState<VendorDetails | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showBooking, setShowBooking] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
+  const [bookingData, setBookingData] = useState<any>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const { totalPrice, toggleService, isServiceSelected, selectedServices } = useServiceSelection();
+
+  useEffect(() => {
+    const fetchVendorDetails = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch(`/api/vendors/${params.id}`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch vendor details');
+        }
+        
+        setVendor(data);
+      } catch (err) {
+        let errorMessage = 'An error occurred while fetching vendor details';
+        
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        } else if (typeof err === 'object' && err && 'error' in err) {
+          errorMessage = String((err as { error: unknown }).error);
+        }
+        
+        setError(errorMessage);
+        console.error('Error fetching vendor details:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (params.id) {
+      fetchVendorDetails();
+    }
+  }, [params.id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">Loading vendor details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !vendor) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Vendor</h2>
+          <p className="text-gray-600 mb-4">{error || 'Vendor not found'}</p>
+          <Link href="/vendors" className="text-primary hover:underline">
+            Browse other vendors
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const handleProceedToBook = () => setShowBooking(true)
   const handleToggleFavorite = () => setIsFavorite((f) => !f)
   const handlePaymentSuccess = () => { setShowPayment(false); setShowBooking(false) }
   const handlePaymentCancel = () => setShowPayment(false)
-  const handleServiceSelect = (serviceId: string) => { toggleService(serviceId) }
+  const handleServiceSelect = (service: Service) => { toggleService(service) }
 
   return (
     <div className={"min-h-screen bg-gradient-to-br from-gray-50 to-white " + inter.className}>
       {/* Hero Section */}
       <section className="relative w-full h-[380px] md:h-[420px] flex items-end">
         <img
-          src={vendor.coverImage || vendor.image}
+          src={vendor.coverImage}
           alt={vendor.name}
           className="absolute inset-0 w-full h-full object-cover object-center rounded-b-3xl shadow-lg"
         />
@@ -78,10 +141,7 @@ export default function VendorDetailsPage() {
                       key={service.id}
                       service={service}
                       isSelected={isServiceSelected(service.id)}
-                      onSelect={() => toggleService(service)}
-                      duration={service.duration}
-                      availability={service.availability}
-                      className="rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow bg-gray-50"
+                      onSelect={() => handleServiceSelect(service)}
                     />
                   ))}
                 </div>
@@ -128,7 +188,13 @@ export default function VendorDetailsPage() {
                 <div className="space-y-4">
                   {vendor.reviews?.length > 0 ? (
                     vendor.reviews.map((review, index) => (
-                      <ReviewCard key={index} review={review} />
+                      <ReviewCard 
+                        key={index} 
+                        review={{
+                          ...review,
+                          id: String(review.id)
+                        }}
+                      />
                     ))
                   ) : (
                     <p className="text-center text-gray-500 py-8">No reviews yet</p>
@@ -182,6 +248,7 @@ export default function VendorDetailsPage() {
       {/* Payment Dialog */}
       {showPayment && bookingData && (
         <PaymentGateway
+          bookingId={bookingData.id}
           amount={bookingData.amount}
           onSuccess={handlePaymentSuccess}
           onCancel={handlePaymentCancel}
