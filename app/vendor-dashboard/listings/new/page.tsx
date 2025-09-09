@@ -1,24 +1,29 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, X, DollarSign } from "lucide-react"
-import { useAuth, useUser } from "@clerk/nextjs"
+import { useRouter, useParams } from "next/navigation"
+import { ArrowLeft, Upload, X } from "lucide-react"
+import { useAuth, useSession, useUser } from "@clerk/nextjs"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "sonner"
-import { useSession } from '@clerk/clerk-react';
-import { Badge } from "@/components/ui/badge"
+import { toast } from "@/components/ui/use-toast"
 
-interface Feature {
-  id: string;
-  name: string;
-  price: string;
+interface ListingImage {
+  url: string;
+  public_id?: string;
+}
+
+interface ListingData {
+  title: string;
   description: string;
+  category: string;
+  price: string;
+  location: string;
+  images: ListingImage[];
 }
 
 interface CloudinaryUploadResponse {
@@ -27,124 +32,29 @@ interface CloudinaryUploadResponse {
   created_at: string;
 }
 
-export default function NewListingPage() {
+export default function EditListingPage() {
+  const router = useRouter()
   const { session } = useSession();
   const [token, setToken] = useState<string | null>(null)
-  const [tokenLoading, setTokenLoading] = useState(true)
-  const router = useRouter()
-  const { isSignedIn, isLoaded } = useAuth()
-  const { user } = useUser()
-  const userRole = user?.unsafeMetadata?.role as string || "user"
+  const params = useParams()
+  const { isLoaded, isSignedIn } = useAuth();
+
+  const { user } = useUser();
+  const userRole = user?.unsafeMetadata?.role as string || "user";
   const [isLoading, setIsLoading] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ListingData>({
     title: "",
     description: "",
     category: "",
     price: "",
     location: "",
-    capacity: "",
-    terms: [] as string[],
-    features: [] as Feature[],
+    images: [],
   })
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [newTerm, setNewTerm] = useState("")
-  const [newFeature, setNewFeature] = useState({
-    name: "",
-    price: "",
-    description: "",
-  })
+  const [imageFiles, setImageFiles] = useState<File[]>([])
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([])
 
-  useEffect(() => {
-    const fetchToken = async () => {
-      setTokenLoading(true);
-      try {
-        if (session) {
-          const userToken = await session.getToken();
-          console.log("Token fetched:", userToken ? "Success" : "Failed");
-          setToken(userToken);
-        } else {
-          console.log("No session available");
-        }
-      } catch (error) {
-        console.error("Error fetching token:", error);
-      } finally {
-        setTokenLoading(false);
-      }
-    };
-
-    if (isSignedIn && session) {
-      fetchToken();
-    } else {
-      setTokenLoading(false);
-    }
-  }, [session, isSignedIn]);
-
-  // Redirect if not authenticated or not a vendor
-  useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push("/sign-in?role=vendor")
-    } else if (isLoaded && isSignedIn && userRole !== "vendor") {
-      router.push("/")
-    }
-  }, [isLoaded, isSignedIn, userRole, router])
-
-  // Clean up object URLs when component unmounts
-  useEffect(() => {
-    return () => {
-      imagePreviews.forEach(preview => URL.revokeObjectURL(preview));
-    };
-  }, [imagePreviews]);
-
-  if (!isLoaded || !isSignedIn || userRole !== "vendor" || tokenLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  const categories = [
-    "Wedding Venue",
-    "Photography",
-    "Catering",
-    "Decoration",
-    "Music & DJ",
-    "Transportation",
-    "Beauty & Makeup",
-    "Florist",
-    "Wedding Planner",
-    "Other",
-  ]
-
-  const handleInputChange = (field: string, value: string | string[]) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    
-    // Create previews WITHOUT uploading
-    const previews = files.map(file => URL.createObjectURL(file));
-    
-    setSelectedFiles(prev => [...prev, ...files]);
-    setImagePreviews(prev => [...prev, ...previews]);
-  };
-
-  const handleRemoveImage = (index: number) => {
-    // Clean up the object URL to prevent memory leaks
-    URL.revokeObjectURL(imagePreviews[index]);
-    
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
-    setImagePreviews(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const uploadImagesToCloudinary = async (files: File[]): Promise<CloudinaryUploadResponse[]> => {
+  // ✅ ADD THESE FUNCTIONS INSIDE YOUR COMPONENT
+  const uploadImagesOnSubmit = async (files: File[]): Promise<CloudinaryUploadResponse[]> => {
     const uploadPromises = files.map(async (file) => {
       const formData = new FormData();
       formData.append('file', file);
@@ -170,66 +80,140 @@ export default function NewListingPage() {
     return Promise.all(uploadPromises);
   };
 
-  const deleteUploadedImages = async (images: CloudinaryUploadResponse[]) => {
-    for (const image of images) {
-      try {
-        await fetch('/api/delete-image', {
-          method: 'DELETE',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ publicId: image.public_id }),
-        });
-      } catch (error) {
-        console.error('Failed to delete image:', error);
-      }
+  const deleteUploadedImage = async (publicId: string): Promise<void> => {
+    try {
+      await fetch('/api/delete-image', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ publicId }),
+      });
+    } catch (error) {
+      console.error('Failed to delete image:', error);
     }
   };
 
-  const handleAddFeature = () => {
-    if (newFeature.name.trim() && newFeature.price.trim()) {
-      const feature: Feature = {
-        id: Date.now().toString(),
-        name: newFeature.name.trim(),
-        price: newFeature.price.trim(),
-        description: newFeature.description.trim(),
+  // Redirect if not authenticated as vendor
+  useEffect(() => {
+    if (isLoaded && (!isSignedIn || userRole !== "vendor")) {
+      router.push("/");
+    }
+  }, [isLoaded, isSignedIn, userRole, router]);
+
+  useEffect(() => {
+    const fetchToken = async () => {
+      if (session) {
+        const userToken = await session.getToken();
+        setToken(userToken);
       }
+    };
+    fetchToken();
+  }, [session]);
 
-      setFormData(prev => ({
-        ...prev,
-        features: [...prev.features, feature]
-      }))
+  useEffect(() => {
+    async function fetchListing() {
+      try {
+        const res = await fetch(`/api/listing/${params.id}`);
+        const data = await res.json();
+        const listing = data.listing;
 
-      setNewFeature({
-        name: "",
-        price: "",
-        description: "",
-      })
-    } else {
-      toast.error("Feature name and price are required")
+        setFormData({
+          title: listing.title || "",
+          description: listing.description || "",
+          category: listing.category || "",
+          price: listing.price?.toString() || "",
+          location: listing.location || "",
+          images: listing.images || [],
+        });
+      } catch (err) {
+        console.error("Failed to fetch listing:", err);
+        toast({
+          title: "Error",
+          description: "Failed to fetch listing details",
+          variant: "destructive",
+        });
+      }
+    }
+
+    if (params?.id) {
+      fetchListing();
+    }
+  }, [params?.id]);
+
+  const categories = [
+    "Wedding Venue",
+    "Photography",
+    "Catering",
+    "Decoration",
+    "Music & DJ",
+    "Transportation",
+    "Beauty & Makeup",
+    "Florist",
+    "Wedding Planner",
+    "Other",
+  ]
+
+  const handleInputChange = (field: keyof ListingData, value: string | ListingImage[]) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      // ✅ ADD FILE SIZE VALIDATION
+      const validFiles = Array.from(files).filter(file => {
+        if (file.size > 10 * 1024 * 1024) {
+          toast({
+            title: "File too large",
+            description: `${file.name} exceeds 10MB limit`,
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      });
+
+      setImageFiles(prev => [...prev, ...validFiles]);
+      
+      if (validFiles.length > 0) {
+        toast({
+          title: "Images Selected",
+          description: `${validFiles.length} image(s) added for upload`,
+        });
+      }
     }
   }
 
-  const handleRemoveFeature = (featureId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      features: prev.features.filter(f => f.id !== featureId)
-    }))
+  const handleRemoveExistingImage = (index: number, publicId: string) => {
+    // Add to deletion list
+    if (publicId) {
+      setImagesToDelete(prev => [...prev, publicId]);
+    }
+
+    // Remove from displayed images
+    handleInputChange(
+      "images",
+      formData.images.filter((_, i) => i !== index)
+    )
+
+    toast({
+      title: "Image Removed",
+      description: "Image will be deleted when you save changes",
+    });
   }
 
-  const handleFeatureInputChange = (field: string, value: string) => {
-    setNewFeature(prev => ({
-      ...prev,
-      [field]: value
-    }))
+  const handleRemoveNewImage = (index: number) => {
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    toast({
+      title: "Image Removed",
+      description: "Upload cancelled for this image",
+    });
   }
 
   const validateForm = () => {
     if (!formData.title || !formData.description || !formData.category || !formData.price) {
       return "Please fill in all required fields (Title, Description, Category, Price)"
-    }
-    if (selectedFiles.length === 0) {
-      return "Please upload at least one image"
     }
     return null
   }
@@ -239,58 +223,79 @@ export default function NewListingPage() {
 
     const validationError = validateForm();
     if (validationError) {
-      toast.error(validationError);
+      toast({
+        title: "Validation Error",
+        description: validationError,
+        variant: "destructive",
+      });
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // ✅ ONLY NOW UPLOAD IMAGES - after form validation
-      const uploadedImages = await uploadImagesToCloudinary(selectedFiles);
+      let uploadedImages: CloudinaryUploadResponse[] = [];
+      
+      // ✅ UPLOAD NEW IMAGES FIRST (if any)
+      if (imageFiles.length > 0) {
+        uploadedImages = await uploadImagesOnSubmit(imageFiles);
+      }
 
-      // Send to your API
-      const response = await fetch('/api/listing', {
-        method: 'POST',
+      // ✅ PREPARE JSON DATA (not FormData)
+      const requestBody = {
+        listingId: params.id as string,
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        price: formData.price,
+        location: formData.location,
+        images: uploadedImages, // Newly uploaded images
+        imagesToDelete: imagesToDelete, // Images to remove
+        tempImageIds: uploadedImages.map(img => img.public_id) // For cleanup
+      };
+
+      const res = await fetch("/api/listing", {
+        method: "PUT",
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          title: formData.title,
-          description: formData.description,
-          price: formData.price,
-          location: formData.location,
-          category: formData.category,
-          features: formData.features,
-          images: uploadedImages,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      if (!response.ok) {
+      const responseData = await res.json();
+
+      if (!res.ok) {
         // ❌ If API fails, delete the images we just uploaded
-        await deleteUploadedImages(uploadedImages);
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to create listing');
+        if (uploadedImages.length > 0) {
+          await Promise.all(
+            uploadedImages.map(img => deleteUploadedImage(img.public_id))
+          );
+        }
+        throw new Error(responseData.message || "Failed to update listing");
       }
 
-      // ✅ Success
-      toast.success("Listing created successfully");
+      toast({
+        title: "Listing Updated",
+        description: "Your listing has been successfully updated.",
+      });
+
       router.push("/vendor-dashboard/listings");
-      
-    } catch (err) {
-      console.error("Error in handleSubmit:", err);
-      toast.error(err instanceof Error ? err.message : "An unexpected error occurred");
+    } catch (err: any) {
+      console.error("Update error:", err);
+      toast({
+        title: "Error",
+        description: err.message || "An error occurred while updating the listing.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    // Clean up object URLs
-    imagePreviews.forEach(preview => URL.revokeObjectURL(preview));
-    router.push("/vendor-dashboard/listings");
-  };
+  if (!isLoaded || !isSignedIn || userRole !== "vendor") {
+    return null;
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -308,8 +313,8 @@ export default function NewListingPage() {
 
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Add New Listing</h1>
-          <p className="text-gray-500 mt-1">Create a new venue or service listing</p>
+          <h1 className="text-3xl font-bold">Edit Listing</h1>
+          <p className="text-gray-500 mt-1">Update your venue or service listing</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -317,7 +322,7 @@ export default function NewListingPage() {
           <Card>
             <CardHeader>
               <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Provide the essential details about your listing</CardDescription>
+              <CardDescription>Update the essential details about your listing</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -352,9 +357,10 @@ export default function NewListingPage() {
                   <Label htmlFor="price">Price *</Label>
                   <Input
                     id="price"
+                    type="number"
                     value={formData.price}
                     onChange={(e) => handleInputChange("price", e.target.value)}
-                    placeholder="e.g., ₹50,000 or Starting from ₹25,000"
+                    placeholder="e.g., 50000"
                     required
                   />
                 </div>
@@ -388,127 +394,87 @@ export default function NewListingPage() {
           <Card>
             <CardHeader>
               <CardTitle>Images</CardTitle>
-              <CardDescription>Select images </CardDescription>
+              <CardDescription>Upload images of your venue or service</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileSelect}
-              />
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-500 mb-2">Click to upload images</p>
 
-              {/* Local previews only - no Cloudinary connection */}
-              {imagePreviews.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                  {imagePreviews.map((preview, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-24 object-cover rounded-lg"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                <input
+                  type="file"
+                  id="image-upload"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  multiple
+                />
 
-          {/* Features & Services */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Features & Services</CardTitle>
-              <CardDescription>Add individual features or services with their prices</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Add New Feature Form */}
-              <div className="border rounded-lg p-4 bg-gray-50">
-                <h4 className="font-medium mb-4">Add New Feature</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="feature-name">Feature Name *</Label>
-                    <Input
-                      id="feature-name"
-                      value={newFeature.name}
-                      onChange={(e) => handleFeatureInputChange("name", e.target.value)}
-                      placeholder="e.g., Photography, Catering, Decoration"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="feature-price">Price *</Label>
-                    <Input
-                      id="feature-price"
-                      value={newFeature.price}
-                      onChange={(e) => handleFeatureInputChange("price", e.target.value)}
-                      placeholder="e.g., ₹10,000 or ₹500 per person"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="feature-description">Description</Label>
-                    <Input
-                      id="feature-description"
-                      value={newFeature.description}
-                      onChange={(e) => handleFeatureInputChange("description", e.target.value)}
-                      placeholder="Brief description of the feature"
-                      onKeyPress={(e) => e.key === "Enter" && (e.preventDefault(), handleAddFeature())}
-                    />
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  onClick={handleAddFeature}
-                  disabled={!newFeature.name.trim() || !newFeature.price.trim()}
-                  className="flex items-center gap-2"
+                <label
+                  htmlFor="image-upload"
+                  className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
                 >
-                  <Plus className="h-4 w-4" />
-                  Add Feature
-                </Button>
+                  Choose Files
+                </label>
+                <p className="text-xs text-gray-400 mt-2">
+                  JPG, PNG, or WEBP (Max 10MB each)
+                </p>
               </div>
 
-              {/* Display Added Features */}
-              {formData.features.length > 0 && (
-                <div className="space-y-4">
-                  <h4 className="font-medium">Added Features</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {formData.features.map((feature) => (
-                      <div key={feature.id} className="border rounded-lg p-4 bg-white relative">
-                        <div className="flex justify-between items-start mb-2">
-                          <h5 className="font-medium text-gray-900">{feature.name}</h5>
+              {/* Existing images */}
+              {formData.images.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">Existing Images</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {formData.images.map((image, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={image.url}
+                          alt={`Listing image ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 flex items-center justify-center rounded-lg transition-all">
                           <button
                             type="button"
-                            onClick={() => handleRemoveFeature(feature.id)}
-                            className="text-red-600 hover:text-red-800"
+                            onClick={() => handleRemoveExistingImage(index, image.public_id || '')}
+                            className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-6 w-6" />
                           </button>
                         </div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <DollarSign className="h-4 w-4 text-green-600" />
-                          <Badge variant="secondary" className="bg-green-100 text-green-800">
-                            {feature.price}
-                          </Badge>
-                        </div>
-                        {feature.description && (
-                          <p className="text-sm text-gray-600">{feature.description}</p>
-                        )}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {formData.features.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <DollarSign className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No features added yet. Add your first feature above.</p>
+              {/* New images to be uploaded */}
+              {imageFiles.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-2">New Images to Upload</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {imageFiles.map((file, index) => (
+                      <div key={index} className="relative group">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`New image ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-lg"
+                        />
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 flex items-center justify-center rounded-lg transition-all">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNewImage(index)}
+                            className="text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-6 w-6" />
+                          </button>
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-xs p-1 truncate">
+                          {file.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -519,16 +485,16 @@ export default function NewListingPage() {
             <Button
               type="button"
               variant="outline"
-              onClick={handleCancel}
+              onClick={() => router.push("/vendor-dashboard/listings")}
             >
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Creating..." : "Create Listing"}
+              {isLoading ? "Saving..." : "Save Changes"}
             </Button>
           </div>
         </form>
       </div>
     </div>
-  );
+  )
 }

@@ -196,8 +196,10 @@ export async function PUT(req: NextRequest) {
 
   await connectDB();
 
+  let tempImageIds: string[] = [];
+  
   try {
-    // Parse JSON body instead of form data
+    // Parse JSON body
     const body = await req.json();
     const { 
       listingId, 
@@ -207,11 +209,21 @@ export async function PUT(req: NextRequest) {
       location, 
       category, 
       features, 
-      images, // Updated images array
-      imagesToDelete // Array of public_ids to delete from Cloudinary
+      images, // Newly uploaded images array
+      imagesToDelete, // Array of public_ids to delete
+      tempImageIds: sentTempImageIds // Temp IDs for cleanup
     } = body;
 
+    // Store temp IDs for cleanup
+    if (sentTempImageIds && Array.isArray(sentTempImageIds)) {
+      tempImageIds = sentTempImageIds;
+    }
+
     if (!listingId) {
+      // Clean up any uploaded images if validation fails
+      if (tempImageIds.length > 0) {
+        await cleanupImages(tempImageIds);
+      }
       return NextResponse.json(
         { message: "Listing ID is required" },
         { status: 400 }
@@ -221,30 +233,27 @@ export async function PUT(req: NextRequest) {
     // Find the listing
     const listing = await Listing.findById(listingId);
     if (!listing) {
+      if (tempImageIds.length > 0) {
+        await cleanupImages(tempImageIds);
+      }
       return NextResponse.json({ message: "Listing not found" }, { status: 404 });
     }
 
-    // Verify the listing belongs to the current vendor
+    // Verify ownership
     const vendor = await Vendor.findOne({ clerkId: userId });
     if (!vendor || !listing.owner.equals(vendor._id)) {
+      if (tempImageIds.length > 0) {
+        await cleanupImages(tempImageIds);
+      }
       return NextResponse.json(
         { message: "Unauthorized: You do not own this listing" },
         { status: 403 }
       );
     }
 
-    // Handle image deletions if provided
+    // Handle image deletions
     if (imagesToDelete && Array.isArray(imagesToDelete) && imagesToDelete.length > 0) {
-      // Delete images from Cloudinary
-      await Promise.all(
-        imagesToDelete.map(async (publicId: string) => {
-          try {
-            await cloudinary.uploader.destroy(publicId);
-          } catch (error) {
-            console.error(`Error deleting image ${publicId}:`, error);
-          }
-        })
-      );
+      await cleanupImages(imagesToDelete);
       
       // Remove from listing images array
       listing.images = listing.images.filter(
@@ -252,12 +261,12 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Update the listing with new images if provided
-    if (images && Array.isArray(images)) {
-      listing.images = images; // Replace with new images array
+    // Add new images if provided
+    if (images && Array.isArray(images) && images.length > 0) {
+      listing.images = [...listing.images, ...images];
     }
 
-    // Update other listing fields
+    // Update other fields
     if (title) listing.title = title;
     if (description) listing.description = description;
     if (price) listing.price = parseFloat(price);
@@ -267,11 +276,26 @@ export async function PUT(req: NextRequest) {
 
     await listing.save();
 
+    // Clean up any temporary images that weren't used
+    if (tempImageIds.length > 0) {
+      const usedImageIds = images ? images.map((img: CloudinaryImage) => img.public_id) : [];
+      const imagesToCleanup = tempImageIds.filter((id: string) => !usedImageIds.includes(id));
+      
+      if (imagesToCleanup.length > 0) {
+        await cleanupImages(imagesToCleanup);
+      }
+    }
+
     return NextResponse.json(
       { message: "Listing updated successfully", listing },
       { status: 200 }
     );
   } catch (error: any) {
+    // Clean up images on any error
+    if (tempImageIds.length > 0) {
+      await cleanupImages(tempImageIds);
+    }
+    
     console.error("Error updating listing:", error);
     return NextResponse.json(
       { message: "Failed to update listing", error: error.message },

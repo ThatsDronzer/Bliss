@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "@/components/ui/use-toast"
+import { deleteUploadedImage } from "@/lib/client-side-upload"
 
 interface ListingImage {
   url: string;
@@ -25,6 +26,12 @@ interface ListingData {
   price: string;
   location: string;
   images: ListingImage[];
+}
+
+interface CloudinaryUploadResponse {
+  url: string;
+  public_id: string;
+  [key: string]: any;
 }
 
 export default function EditListingPage() {
@@ -157,6 +164,32 @@ export default function EditListingPage() {
     return null
   }
 
+  const uploadImagesOnSubmit = async (files: File[]): Promise<CloudinaryUploadResponse[]> => {
+    const uploadPromises = files.map(async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'nextjs_unsigned_upload');
+      formData.append('folder', 'listings');
+      formData.append('tags', 'temporary');
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Image upload failed');
+      }
+
+      return response.json();
+    });
+
+    return Promise.all(uploadPromises);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -173,38 +206,45 @@ export default function EditListingPage() {
     setIsLoading(true);
 
     try {
-      // Create FormData to handle file uploads
-      const submitFormData = new FormData();
-
-      // Add text fields
-      submitFormData.append('listingId', params.id as string);
-      submitFormData.append('title', formData.title);
-      submitFormData.append('description', formData.description);
-      submitFormData.append('category', formData.category);
-      submitFormData.append('price', formData.price);
-      submitFormData.append('location', formData.location);
-
-      // Add images to delete if any
-      if (imagesToDelete.length > 0) {
-        submitFormData.append('imagesToDelete', JSON.stringify(imagesToDelete));
+      let uploadedImages: CloudinaryUploadResponse[] = [];
+      
+      // ✅ UPLOAD NEW IMAGES FIRST (if any)
+      if (imageFiles.length > 0) {
+        const uploadResult = await uploadImagesOnSubmit(imageFiles);
+        uploadedImages = uploadResult; // Ensure it's assigned properly
       }
 
-      // Add new image files
-      imageFiles.forEach(file => {
-        submitFormData.append('images', file);
-      });
+      // ✅ PREPARE JSON DATA (not FormData)
+      const requestBody = {
+        listingId: params.id as string,
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        price: formData.price,
+        location: formData.location,
+        images: uploadedImages, // Newly uploaded images
+        imagesToDelete: imagesToDelete, // Images to remove
+        tempImageIds: uploadedImages.map(img => img.public_id) // For cleanup
+      };
 
       const res = await fetch("/api/listing", {
         method: "PUT",
         headers: {
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: submitFormData,
+        body: JSON.stringify(requestBody),
       });
 
       const responseData = await res.json();
 
       if (!res.ok) {
+        // ❌ If API fails, delete the images we just uploaded
+        if (uploadedImages.length > 0) {
+          await Promise.all(
+            uploadedImages.map(img => deleteUploadedImage(img.public_id))
+          );
+        }
         throw new Error(responseData.message || "Failed to update listing");
       }
 
