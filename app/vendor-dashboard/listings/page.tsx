@@ -260,7 +260,7 @@ export default function VendorListingsPage() {
         }));
 
         return "Listing deleted successfully";
-      } catch (error) {
+      } catch (error:any) {
         throw new Error(error.message || "An error occurred while deleting the listing");
       }
     })(),
