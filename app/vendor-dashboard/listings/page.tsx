@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
-import {toast} from "sonner";
+import { toast } from "sonner";
 import {
   Plus,
   Edit,
@@ -62,7 +62,12 @@ export default function VendorListingsPage() {
     isActive: boolean;
     status: "active" | "inactive" | "draft";
     createdAt: string;
-    // Add any other fields you expect
+    images: Array<{
+      url: string;
+      public_id: string;
+      _id: string;
+      isActive: boolean;
+    }>;
   }
 
   // Get user role from Clerk metadata
@@ -137,7 +142,7 @@ export default function VendorListingsPage() {
         const data = await res.json();
 
         let listingsArray: Listing[] = data.listings;
-      
+
 
         if (!Array.isArray(listingsArray)) {
           console.error(
@@ -226,191 +231,204 @@ export default function VendorListingsPage() {
         return <Badge variant="secondary">{status}</Badge>;
     }
   };
- const handleDelete = async (listingId: string) => {
-  if (!token) {
-    toast.error("User not authenticated");
-    return;
-  }
-
-  // Create a toast promise that shows loading until the operation completes
-  toast.promise(
-    (async () => {
-      try {
-        const res = await fetch("/api/listing", {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ listingId }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.message || "Failed to delete listing");
-        }
-
-        // Update UI
-        setListingsData((prev) => ({
-          ...prev,
-          active: prev.active.filter((l) => l._id !== listingId),
-          inactive: prev.inactive.filter((l) => l._id !== listingId),
-          draft: prev.draft.filter((l) => l._id !== listingId),
-        }));
-
-        return "Listing deleted successfully";
-      } catch (error:any) {
-        throw new Error(error.message || "An error occurred while deleting the listing");
-      }
-    })(),
-    {
-      loading: "Deleting listing...",
-      success: (message) => message,
-      error: (error) => error.message,
+  const handleDelete = async (listingId: string) => {
+    if (!token) {
+      toast.error("User not authenticated");
+      return;
     }
-  );
-};
+
+    // Create a toast promise that shows loading until the operation completes
+    toast.promise(
+      (async () => {
+        try {
+          const res = await fetch("/api/listing", {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ listingId }),
+          });
+
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.message || "Failed to delete listing");
+          }
+
+          // Update UI
+          setListingsData((prev) => ({
+            ...prev,
+            active: prev.active.filter((l) => l._id !== listingId),
+            inactive: prev.inactive.filter((l) => l._id !== listingId),
+            draft: prev.draft.filter((l) => l._id !== listingId),
+          }));
+
+          return "Listing deleted successfully";
+        } catch (error: any) {
+          throw new Error(error.message || "An error occurred while deleting the listing");
+        }
+      })(),
+      {
+        loading: "Deleting listing...",
+        success: (message) => message,
+        error: (error) => error.message,
+      }
+    );
+  };
 
 
 
   const ListingCard = ({ listing }: { listing: Listing }) => {
     const [openDeactivate, setOpenDeactivate] = useState(false);
     const [openDelete, setOpenDelete] = useState(false);
-    
+
+    // Get the first image or use a placeholder
+    const firstImage = listing.images && listing.images.length > 0
+      ? listing.images[0]
+      : null;
+
     return (
-    <Card className="mb-4">
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-4">
-            <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center">
-              <span className="text-gray-500 text-sm">Image</span>
-            </div>
-            <div className="flex-1">
-              <CardTitle className="text-lg">{listing.title}</CardTitle>
-              <CardDescription className="mb-2">
-                {listing.description}
-              </CardDescription>
-              <div className="flex items-center space-x-4 text-sm text-gray-600">
-                <div className="flex items-center">
-                  <MapPin className="mr-1 h-3 w-3" />
-                  {listing.location}
-                </div>
-                <div className="flex items-center">
-                  <Star className="mr-1 h-3 w-3" />
-                  {listing.rating > 0
-                    ? `${listing.rating} (${listing.reviews})`
-                    : "No reviews"}
-                </div>
-                <div className="flex items-center">
-                  <Calendar className="mr-1 h-3 w-3" />
-                  {listing.bookings} bookings
+      <Card className="mb-4">
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-4">
+              <div className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                {firstImage ? (
+                <img 
+                  src={firstImage.url} 
+                  alt={listing.title}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-gray-500 text-sm">No Image</span>
+              )}
+              </div>
+              <div className="flex-1">
+                <CardTitle className="text-lg">{listing.title}</CardTitle>
+                <CardDescription className="mb-2">
+                  {listing.description}
+                </CardDescription>
+                <div className="flex items-center space-x-4 text-sm text-gray-600">
+                  <div className="flex items-center">
+                    <MapPin className="mr-1 h-3 w-3" />
+                    {listing.location}
+                  </div>
+                  <div className="flex items-center">
+                    <Star className="mr-1 h-3 w-3" />
+                    {listing.rating > 0
+                      ? `${listing.rating} (${listing.reviews})`
+                      : "No reviews"}
+                  </div>
+                  <div className="flex items-center">
+                    <Calendar className="mr-1 h-3 w-3" />
+                    {listing.bookings} bookings
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-semibold">
-              ₹{listing.price.toLocaleString()}
+            <div className="text-right">
+              <div className="text-lg font-semibold">
+                ₹{listing.price.toLocaleString()}
+              </div>
+              {getStatusBadge(listing.status)}
             </div>
-            {getStatusBadge(listing.status)}
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex justify-between items-center">
-          <div className="text-sm text-gray-500">
-            Created: {formatDate(listing.createdAt)}
-          </div>
-          <div className="flex space-x-2">
-                         <Button 
-               variant="outline" 
-               size="sm"
-               onClick={() => router.push(`/vendor-dashboard/listings/${listing._id}/view`)}
-             >
-               <Eye className="mr-1 h-3 w-3" />
-               View
-             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                router.push(`/vendor-dashboard/listings/${listing._id}/edit`)
-              }
-            >
-              <Edit className="mr-1 h-3 w-3" />
-              Edit
-            </Button>
-            <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-red-600 hover:text-red-700"
-                >
-                  <Trash2 className="mr-1 h-3 w-3" />
-                  Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Listing</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete this listing? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      setOpenDelete(false);
-                      handleDelete(listing._id);
-                    }}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            
-            {listing.status === "active" && (
-              <AlertDialog open={openDeactivate} onOpenChange={setOpenDeactivate}>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-500">
+              Created: {formatDate(listing.createdAt)}
+            </div>
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push(`/vendor-dashboard/listings/${listing._id}/view`)}
+              >
+                <Eye className="mr-1 h-3 w-3" />
+                View
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  router.push(`/vendor-dashboard/listings/${listing._id}/edit`)
+                }
+              >
+                <Edit className="mr-1 h-3 w-3" />
+                Edit
+              </Button>
+              <AlertDialog open={openDelete} onOpenChange={setOpenDelete}>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-yellow-600 hover:text-yellow-700"
+                    className="text-red-600 hover:text-red-700"
                   >
-                    <PowerOff className="mr-1 h-3 w-3" />
-                    Deactivate
+                    <Trash2 className="mr-1 h-3 w-3" />
+                    Delete
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>Deactivate Listing</AlertDialogTitle>
+                    <AlertDialogTitle>Delete Listing</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to deactivate this listing? It will no longer be visible to customers.
+                      Are you sure you want to delete this listing? This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
                       onClick={() => {
-                        setOpenDeactivate(false);
-                        toast.success("Deactivate functionality not implemented yet.");
+                        setOpenDelete(false);
+                        handleDelete(listing._id);
                       }}
+                      className="bg-red-600 hover:bg-red-700"
                     >
-                      Deactivate
+                      Delete
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            )}
+
+              {listing.status === "active" && (
+                <AlertDialog open={openDeactivate} onOpenChange={setOpenDeactivate}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="text-yellow-600 hover:text-yellow-700"
+                    >
+                      <PowerOff className="mr-1 h-3 w-3" />
+                      Deactivate
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Deactivate Listing</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to deactivate this listing? It will no longer be visible to customers.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          setOpenDeactivate(false);
+                          toast.success("Deactivate functionality not implemented yet.");
+                        }}
+                      >
+                        Deactivate
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
     );
   };
 
@@ -506,31 +524,28 @@ export default function VendorListingsPage() {
         <div className="flex space-x-4 border-b">
           <button
             onClick={() => setActiveTab("active")}
-            className={`pb-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "active"
-                ? "border-pink-500 text-pink-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+            className={`pb-2 px-1 border-b-2 font-medium text-sm ${activeTab === "active"
+              ? "border-pink-500 text-pink-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
           >
             Active ({listings.active.length})
           </button>
           <button
             onClick={() => setActiveTab("draft")}
-            className={`pb-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "draft"
-                ? "border-pink-500 text-pink-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+            className={`pb-2 px-1 border-b-2 font-medium text-sm ${activeTab === "draft"
+              ? "border-pink-500 text-pink-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
           >
             Draft ({listings.draft.length})
           </button>
           <button
             onClick={() => setActiveTab("inactive")}
-            className={`pb-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === "inactive"
-                ? "border-pink-500 text-pink-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+            className={`pb-2 px-1 border-b-2 font-medium text-sm ${activeTab === "inactive"
+              ? "border-pink-500 text-pink-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
           >
             Inactive ({listings.inactive.length})
           </button>
