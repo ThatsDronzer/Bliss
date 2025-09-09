@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Delete images from Cloudinary
     await Promise.all(
       imageIds.map(async (publicId: string) => {
         try {
