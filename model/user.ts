@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, model, models } from 'mongoose';
+import mongoose, { Schema, Document, model, models, Types } from 'mongoose';
 
 export interface IUser extends Document {
   clerkId: string;
@@ -19,7 +19,8 @@ export interface IUser extends Document {
       postOffice: string;
       state: string;
       pin: string;
-  }    
+  }
+  messages: Types.ObjectId[]; // Array of message IDs   
 }
 
 const userSchema = new Schema<IUser>(
@@ -74,8 +75,10 @@ const userSchema = new Schema<IUser>(
       postOffice: { type: String, required: false, trim: true, default: "" },
       state: { type: String, required: false, trim: true, default: "" },
       pin: { type: String, required: false, trim: true, default: "" }
-    }
+    },
+    messages: [{ type: Schema.Types.ObjectId, ref: 'MessageData' }],
   },
+  
   { timestamps: true }
 );
 

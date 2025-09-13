@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, model } from 'mongoose';
+import mongoose, { Schema, Document, model, Types } from 'mongoose';
 
 export interface IVendor extends Document {
   clerkId: string;
@@ -41,6 +41,8 @@ export interface IVendor extends Document {
 
   
   listings: mongoose.Schema.Types.ObjectId[]; // Added listings field
+
+   messages: Types.ObjectId[]; // Array of message IDs
 
   createdAt?: Date;
   updatedAt?: Date;
@@ -151,6 +153,8 @@ const vendorSchema = new Schema<IVendor>({
       ref: 'Listing',
     },
   ], // Added listings field to schema
+
+  messages: [{ type: Schema.Types.ObjectId, ref: 'MessageData' }],
 
   createdAt: {
     type: Date,
