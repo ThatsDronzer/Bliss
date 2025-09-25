@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import { deleteUploadedImage } from "@/lib/client-side-upload"
 import { Badge } from "@/components/ui/badge"
 
@@ -124,11 +124,7 @@ export default function EditListingPage() {
         });
       } catch (err) {
         console.error("Failed to fetch listing:", err);
-        toast({
-          title: "Error",
-          description: "Failed to fetch listing details",
-          variant: "destructive",
-        });
+        toast.error("Failed to load listing data. Please try again.");
       }
     }
 
@@ -167,10 +163,7 @@ export default function EditListingPage() {
     const files = e.target.files
     if (files && files.length > 0) {
       setImageFiles(prev => [...prev, ...Array.from(files)]);
-      toast({
-        title: "Images Selected",
-        description: `${files.length} image(s) added for upload`,
-      });
+      toast.success(`${files.length} image(s) selected for upload.`);
     }
   }
 
@@ -184,18 +177,12 @@ export default function EditListingPage() {
       formData.images.filter((_, i) => i !== index)
     )
 
-    toast({
-      title: "Image Removed",
-      description: "Image will be deleted when you save changes",
-    });
+    toast.success("Image marked for deletion");
   }
 
   const handleRemoveNewImage = (index: number) => {
     setImageFiles(prev => prev.filter((_, i) => i !== index));
-    toast({
-      title: "Image Removed",
-      description: "Upload cancelled for this image",
-    });
+    toast.success("Image removed from upload list");
   }
 
   // Features functions
@@ -207,11 +194,7 @@ export default function EditListingPage() {
       }))
       setNewFeature("")
     } else {
-      toast({
-        title: "Error",
-        description: "Please enter a feature",
-        variant: "destructive",
-      })
+      toast.error("Feature cannot be empty")
     }
   }
 
@@ -234,11 +217,7 @@ export default function EditListingPage() {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "Error",
-          description: `File too large: ${file.name} (max 10MB)`,
-          variant: "destructive",
-        });
+        toast.error("Image size exceeds 10MB limit");
         return;
       }
 
@@ -287,11 +266,7 @@ export default function EditListingPage() {
         imagePreview: ""
       })
     } else {
-      toast({
-        title: "Error",
-        description: "Item name, price, and image are required",
-        variant: "destructive",
-      })
+      toast.error("Please fill in all required item fields and select an image")
     }
   }
 
@@ -384,11 +359,7 @@ const handleSubmit = async (e: React.FormEvent) => {
 
   const validationError = validateForm();
   if (validationError) {
-    toast({
-      title: "Validation Error",
-      description: validationError,
-      variant: "destructive",
-    });
+    toast.error(validationError);
     return;
   }
 
@@ -488,19 +459,12 @@ const handleSubmit = async (e: React.FormEvent) => {
       throw new Error(responseData.message || "Failed to update listing");
     }
 
-    toast({
-      title: "Listing Updated",
-      description: "Your listing has been successfully updated.",
-    });
+    toast.success("Listing updated successfully");
 
     router.push("/vendor-dashboard/listings");
   } catch (err: any) {
     console.error("Update error:", err);
-    toast({
-      title: "Error",
-      description: err.message || "An error occurred while updating the listing.",
-      variant: "destructive",
-    });
+    toast.error(err.message || "An error occurred while updating the listing. Please try again.");
   } finally {
     setIsLoading(false);
   }
