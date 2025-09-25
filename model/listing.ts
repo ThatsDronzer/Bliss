@@ -1,21 +1,63 @@
 import mongoose, { Schema, Document, Types, model } from 'mongoose';
 
+export interface IListingImage {
+  url: string;
+  public_id: string;
+}
+export interface IListingItem {
+  name: string;
+  description: string;
+  image: IListingImage;
+  price: number;
+}
+
 export interface IListing extends Document {
   title: string;
   description: string;
   price: number;
-  images?: {
-    url: string;
-    // filename: string;
-  }[];
+  images?: IListingImage[];
   isActive: boolean;
   features?: string[];
   location: string;
   owner: Types.ObjectId;
-  reviews: Types.ObjectId[]; // Optional field for reviews
+  reviews: Types.ObjectId[];
+  items?: IListingItem[];
   createdAt?: Date;
   updatedAt?: Date;
 }
+
+const listingImageSchema = new Schema<IListingImage>({
+  url: {
+    type: String,
+    required: true
+  },
+  public_id: {
+    type: String,
+    required: true
+  }
+});
+
+const listingItemSchema = new Schema<IListingItem>({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  description: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  image: {
+    type: listingImageSchema,
+    required: true,
+  },
+  price: {
+    type: Number,
+    required: true,
+    min: 0,
+  },
+});
 
 const listingSchema = new Schema<IListing>(
   {
@@ -36,27 +78,7 @@ const listingSchema = new Schema<IListing>(
       min: 0,
     },
 
-    images: [
-      // {
-      //   url: { type: String, required: true },
-      //   filename: { type: String, required: true },
-      // },
-      // {
-      //   url:"https://images.unsplash.com/photo-1492684223066-81342ee5ff30?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8ZXZlbnR8ZW58MHx8MHx8fDA%3D"
-      // },
-      // {
-      //   url:"https://images.pexels.com/photos/2747449/pexels-photo-2747449.jpeg?cs=srgb&dl=pexels-wolfgang-1002140-2747449.jpg&fm=jpg"
-      // }
-      {
-        url: { type: String, required: true }, // Explicitly define the type as String
-        public_id: {
-          type: String,
-          required: true
-        }
-        // filename: { type: String, required: true }, // Uncomment this if you intend to use filename
-      },
-    ],
-
+    images: [listingImageSchema],
     isActive: {
       type: Boolean,
       default: true,
@@ -82,6 +104,7 @@ const listingSchema = new Schema<IListing>(
       ref: 'Vendor',
       required: true,
     },
+    items: [listingItemSchema],
   },
   { timestamps: true }
 );

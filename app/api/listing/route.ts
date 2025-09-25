@@ -14,17 +14,55 @@ interface CloudinaryImage {
 }
 async function cleanupImages(publicIds: string[]) {
   try {
-    await Promise.all(
-      publicIds.map(async (publicId: string) => {
-        try {
-          await cloudinary.uploader.destroy(publicId);
-        } catch (error) {
-          console.error(`Error deleting image ${publicId}:`, error);
-        }
-      })
+    // Filter out any empty or invalid public_ids
+    const validPublicIds = publicIds.filter(id => 
+      id && typeof id === 'string' && id.trim().length > 0
     );
+
+    if (validPublicIds.length === 0) {
+      console.log('No valid public IDs to delete');
+      return;
+    }
+
+    console.log(`Deleting ${validPublicIds.length} images from Cloudinary:`, validPublicIds);
+
+    // Delete images in batches
+    const batchSize = 10;
+    for (let i = 0; i < validPublicIds.length; i += batchSize) {
+      const batch = validPublicIds.slice(i, i + batchSize);
+      
+      const deletionResults = await Promise.allSettled(
+        batch.map(async (publicId: string) => {
+          try {
+            const result = await cloudinary.uploader.destroy(publicId);
+            console.log(`Cloudinary deletion result for ${publicId}:`, result);
+            return { publicId, result };
+          } catch (error) {
+            console.error(`Error deleting image ${publicId}:`, error);
+            throw error;
+          }
+        })
+      );
+
+      // Log results for debugging
+      deletionResults.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          console.log(`Successfully deleted ${batch[index]}`);
+        } else {
+          console.error(`Failed to delete ${batch[index]}:`, result.reason);
+        }
+      });
+      
+      // Small delay between batches
+      if (i + batchSize < validPublicIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+
+    console.log('Image cleanup completed');
   } catch (error) {
     console.error("Error in cleanupImages:", error);
+    throw error; // Re-throw to handle in calling function
   }
 }
 export async function GET(req: NextRequest) {
@@ -75,6 +113,7 @@ export async function POST(req: NextRequest) {
   await connectDB();
 
   let tempImageIds: string[] = [];
+  let tempItemImageIds: string[] = [];
   
   try {
     // Parse JSON body
@@ -87,19 +126,23 @@ export async function POST(req: NextRequest) {
       category, 
       features, 
       images,
-      tempImageIds: sentTempImageIds // Get temp IDs from frontend
+       items,
+      tempImageIds: sentTempImageIds ,
+       tempItemImageIds: sentTempItemImageIds// Get temp IDs from frontend
     } = body;
 
     // Store temp IDs for cleanup if needed
     if (sentTempImageIds && Array.isArray(sentTempImageIds)) {
       tempImageIds = sentTempImageIds;
     }
-
+     if (sentTempItemImageIds && Array.isArray(sentTempItemImageIds)) {
+      tempItemImageIds = sentTempItemImageIds;
+    }
     // Validate required fields
     if (!title || !description || !price || !category) {
       // Clean up uploaded images if validation fails
-      if (tempImageIds.length > 0) {
-        await cleanupImages(tempImageIds);
+      if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
+        await cleanupImages([...tempImageIds, ...tempItemImageIds]);
       }
       return NextResponse.json(
         { message: "Missing required fields" },
@@ -109,8 +152,8 @@ export async function POST(req: NextRequest) {
 
     // Validate images
     if (!images || !Array.isArray(images) || images.length === 0) {
-      if (tempImageIds.length > 0) {
-        await cleanupImages(tempImageIds);
+     if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
+        await cleanupImages([...tempImageIds, ...tempItemImageIds]);
       }
       return NextResponse.json(
         { message: "At least one image is required" },
@@ -120,8 +163,8 @@ export async function POST(req: NextRequest) {
 
     let vendor = await Vendor.findOne({ clerkId: userId });
     if (!vendor) {
-      if (tempImageIds.length > 0) {
-        await cleanupImages(tempImageIds);
+        if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
+        await cleanupImages([...tempImageIds, ...tempItemImageIds]);
       }
       return NextResponse.json(
         { message: "Vendor not found" },
@@ -129,15 +172,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create new listing with Cloudinary images
+    const processedItems = items && Array.isArray(items) ? items.map((item: any) => ({
+      name: item.name,
+      description: item.description || '',
+      price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
+      image: item.image || { url: '', public_id: '' } // Ensure image object structure
+    })) : [];
+
+    // Create new listing 
     const newListing = new Listing({
       title,
       description,
-      price,
+      price: typeof price === 'number' ? price : parseFloat(price),
       location: location || '',
       category,
       features: features || [],
-      images: images, // These are Cloudinary image objects {url, public_id}
+      images: images, 
+      items: processedItems,
       owner: vendor._id,
     });
 
@@ -148,9 +199,16 @@ export async function POST(req: NextRequest) {
     await vendor.save();
     
     // Clean up any temporary images that weren't used
-    if (tempImageIds.length > 0) {
+    if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
       const usedImageIds = images.map((img: CloudinaryImage) => img.public_id);
-      const imagesToDelete = tempImageIds.filter((id: string) => !usedImageIds.includes(id));
+      const usedItemImageIds = processedItems
+        .map((item: any) => item.image?.public_id)
+        .filter((id: string) => id); // Filter out undefined/null
+      
+      const allUsedIds = [...usedImageIds, ...usedItemImageIds];
+      const allTempIds = [...tempImageIds, ...tempItemImageIds];
+      
+      const imagesToDelete = allTempIds.filter((id: string) => !allUsedIds.includes(id));
       
       if (imagesToDelete.length > 0) {
         await cleanupImages(imagesToDelete);
@@ -167,9 +225,10 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     // Clean up images on any error
-    if (tempImageIds.length > 0) {
-      await cleanupImages(tempImageIds);
+     if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
+      await cleanupImages([...tempImageIds, ...tempItemImageIds]);
     }
+    
     
     console.error("Error creating listing:", error);
     return NextResponse.json(
@@ -197,9 +256,9 @@ export async function PUT(req: NextRequest) {
   await connectDB();
 
   let tempImageIds: string[] = [];
+  let tempItemImageIds: string[] = [];
   
   try {
-    // Parse JSON body
     const body = await req.json();
     const { 
       listingId, 
@@ -209,20 +268,25 @@ export async function PUT(req: NextRequest) {
       location, 
       category, 
       features, 
-      images, // Newly uploaded images array
-      imagesToDelete, // Array of public_ids to delete
-      tempImageIds: sentTempImageIds // Temp IDs for cleanup
+      images,
+      items,
+      imagesToDelete,
+      itemImagesToDelete,
+      tempImageIds: sentTempImageIds,
+      tempItemImageIds: sentTempItemImageIds
     } = body;
 
     // Store temp IDs for cleanup
     if (sentTempImageIds && Array.isArray(sentTempImageIds)) {
       tempImageIds = sentTempImageIds;
     }
+    if (sentTempItemImageIds && Array.isArray(sentTempItemImageIds)) {
+      tempItemImageIds = sentTempItemImageIds;
+    }
 
     if (!listingId) {
-      // Clean up any uploaded images if validation fails
-      if (tempImageIds.length > 0) {
-        await cleanupImages(tempImageIds);
+      if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
+        await cleanupImages([...tempImageIds, ...tempItemImageIds]);
       }
       return NextResponse.json(
         { message: "Listing ID is required" },
@@ -230,20 +294,18 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Find the listing
     const listing = await Listing.findById(listingId);
     if (!listing) {
-      if (tempImageIds.length > 0) {
-        await cleanupImages(tempImageIds);
+      if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
+        await cleanupImages([...tempImageIds, ...tempItemImageIds]);
       }
       return NextResponse.json({ message: "Listing not found" }, { status: 404 });
     }
 
-    // Verify ownership
     const vendor = await Vendor.findOne({ clerkId: userId });
     if (!vendor || !listing.owner.equals(vendor._id)) {
-      if (tempImageIds.length > 0) {
-        await cleanupImages(tempImageIds);
+      if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
+        await cleanupImages([...tempImageIds, ...tempItemImageIds]);
       }
       return NextResponse.json(
         { message: "Unauthorized: You do not own this listing" },
@@ -251,35 +313,103 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Handle image deletions
+    // FIX 1: Handle main image deletions FIRST
     if (imagesToDelete && Array.isArray(imagesToDelete) && imagesToDelete.length > 0) {
-      await cleanupImages(imagesToDelete);
-      
-      // Remove from listing images array
-      listing.images = listing.images.filter(
+      // Filter out the images to be deleted BEFORE cleanup
+      const imagesToKeep = listing.images.filter(
         (img: any) => !imagesToDelete.includes(img.public_id)
       );
+      
+      // Get the images that will actually be deleted
+      const imagesBeingDeleted = listing.images.filter(
+        (img: any) => imagesToDelete.includes(img.public_id)
+      );
+      
+      // Clean up ONLY if there are valid images to delete
+      if (imagesBeingDeleted.length > 0) {
+        const publicIdsToDelete = imagesBeingDeleted
+          .map((img: any) => img.public_id)
+          .filter((id: string) => id && id.trim().length > 0);
+        
+        if (publicIdsToDelete.length > 0) {
+          await cleanupImages(publicIdsToDelete);
+        }
+      }
+      
+      // Update the listing images
+      listing.images = imagesToKeep;
     }
 
-    // Add new images if provided
+    // FIX 2: Handle item image deletions
+    if (itemImagesToDelete && Array.isArray(itemImagesToDelete) && itemImagesToDelete.length > 0) {
+      // Filter out empty public_ids
+      const validItemImageIds = itemImagesToDelete.filter(
+        (id: string) => id && id.trim().length > 0
+      );
+      
+      if (validItemImageIds.length > 0) {
+        await cleanupImages(validItemImageIds);
+      }
+    }
+
+    // Add new main images if provided
     if (images && Array.isArray(images) && images.length > 0) {
       listing.images = [...listing.images, ...images];
     }
 
+    // FIX 3: Process items - handle deletions properly
+    if (items && Array.isArray(items)) {
+      // For existing items, we need to handle image deletions at the item level
+      const processedItems = items.map((item: any) => {
+        // If this is an existing item with _id, check if it needs image updates
+        if (item._id) {
+          const existingItem = listing.items.find(
+            (existing: any) => existing._id.toString() === item._id
+          );
+          
+          // If the existing item had an image but the new item doesn't, or has a different image,
+          // we need to delete the old image
+          if (existingItem && existingItem.image && existingItem.image.public_id) {
+            if (!item.image || !item.image.public_id || item.image.public_id !== existingItem.image.public_id) {
+              // Schedule the old image for deletion
+              cleanupImages([existingItem.image.public_id]).catch(console.error);
+            }
+          }
+        }
+        
+        return {
+          _id: item._id || undefined,
+          name: item.name,
+          description: item.description || '',
+          price: typeof item.price === 'number' ? item.price : parseFloat(item.price) || 0,
+          image: item.image || { url: '', public_id: '' }
+        };
+      });
+
+      listing.items = processedItems;
+    }
+
     // Update other fields
-    if (title) listing.title = title;
-    if (description) listing.description = description;
-    if (price) listing.price = parseFloat(price);
-    if (location) listing.location = location;
-    if (category) listing.category = category;
-    if (features) listing.features = features;
+    if (title !== undefined) listing.title = title;
+    if (description !== undefined) listing.description = description;
+    if (price !== undefined) listing.price = typeof price === 'number' ? price : parseFloat(price);
+    if (location !== undefined) listing.location = location;
+    if (category !== undefined) listing.category = category;
+    if (features !== undefined) listing.features = features;
 
     await listing.save();
 
-    // Clean up any temporary images that weren't used
-    if (tempImageIds.length > 0) {
+    // FIX 4: Clean up temporary images that weren't used
+    if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
       const usedImageIds = images ? images.map((img: CloudinaryImage) => img.public_id) : [];
-      const imagesToCleanup = tempImageIds.filter((id: string) => !usedImageIds.includes(id));
+      const usedItemImageIds = items ? items
+        .map((item: any) => item.image?.public_id)
+        .filter((id: string) => id) : [];
+      
+      const allUsedIds = [...usedImageIds, ...usedItemImageIds];
+      const allTempIds = [...tempImageIds, ...tempItemImageIds];
+      
+      const imagesToCleanup = allTempIds.filter((id: string) => !allUsedIds.includes(id));
       
       if (imagesToCleanup.length > 0) {
         await cleanupImages(imagesToCleanup);
@@ -292,8 +422,8 @@ export async function PUT(req: NextRequest) {
     );
   } catch (error: any) {
     // Clean up images on any error
-    if (tempImageIds.length > 0) {
-      await cleanupImages(tempImageIds);
+    if (tempImageIds.length > 0 || tempItemImageIds.length > 0) {
+      await cleanupImages([...tempImageIds, ...tempItemImageIds]);
     }
     
     console.error("Error updating listing:", error);
@@ -303,7 +433,6 @@ export async function PUT(req: NextRequest) {
     );
   }
 }
-
 export async function DELETE(req: NextRequest) {
   const auth = getAuth(req);
   const userId = auth.userId;
@@ -347,15 +476,30 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // First delete images from Cloudinary
+    // Collect ALL image public_ids to delete
+    const allImagePublicIds: string[] = [];
+
+    // Main listing images
     if (listing.images && listing.images.length > 0) {
-      await Promise.all(
-        listing.images.map(async (image: any) => {
-          if (image.public_id) {
-            await cloudinary.uploader.destroy(image.public_id);
-          }
-        })
-      );
+      listing.images.forEach((image: any) => {
+        if (image.public_id) {
+          allImagePublicIds.push(image.public_id);
+        }
+      });
+    }
+
+    // Item images
+    if (listing.items && listing.items.length > 0) {
+      listing.items.forEach((item: any) => {
+        if (item.image && item.image.public_id) {
+          allImagePublicIds.push(item.image.public_id);
+        }
+      });
+    }
+
+    // Delete all images from Cloudinary
+    if (allImagePublicIds.length > 0) {
+      await cleanupImages(allImagePublicIds);
     }
 
     // Remove the listing from the database
