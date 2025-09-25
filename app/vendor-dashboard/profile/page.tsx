@@ -33,6 +33,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+// Common service categories
+const SERVICE_CATEGORIES = [
+  "Photography",
+  "Videography",
+  "Catering",
+  "Decoration",
+  "Music & DJ",
+  "Venue",
+  "Makeup & Hair",
+  "Wedding Planning",
+  "Transportation",
+  "Invitations",
+  "Entertainment",
+  "Other"
+]
 
 export default function VendorProfilePage() {
   const router = useRouter()
@@ -48,10 +71,11 @@ export default function VendorProfilePage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
-    name: "",
+    serviceName: "", // NEW: Service/Business name
+    ownerName: "",   // Owner's personal name
     email: "",
     phone: "",
-    category: "",
+    category: "",    // Fixed: Using select instead of free text
     location: "",
     description: "",
     established: "",
@@ -81,11 +105,12 @@ export default function VendorProfilePage() {
         
         setFormData(prev => ({
           ...prev,
-          name: data.ownerName || "",
+          serviceName: data.service_name || data.businessName || "", // NEW: Get service name
+          ownerName: data.ownerName || "",
           email: data.ownerEmail || "",
           phone: data.service_phone || "",
-          category: data.service_name || "",
-          location: data.service_address?.City || "",
+          category: data.service_type || data.category || "",
+          location: data.service_address?.City || data.location || "",
           description: data.service_description || "",
           established: data.establishedYear || "",
           coins: data.coins || 0,
@@ -114,7 +139,6 @@ export default function VendorProfilePage() {
   useEffect(() => {
     const handleFocus = () => {
       if (isLoaded && isSignedIn && userRole === "vendor" && user?.id) {
-        // Refresh profile data when user returns to the page
         const fetchVendorData = async () => {
           try {
             const response = await fetch(`/api/vendor/${user.id}?t=${Date.now()}`, {
@@ -124,11 +148,12 @@ export default function VendorProfilePage() {
               const data = await response.json()
               setFormData(prev => ({
                 ...prev,
-                name: data.ownerName || prev.name,
+                serviceName: data.service_name || data.businessName || prev.serviceName,
+                ownerName: data.ownerName || prev.ownerName,
                 email: data.ownerEmail || prev.email,
                 phone: data.service_phone || prev.phone,
-                category: data.service_name || prev.category,
-                location: data.service_address?.City || prev.location,
+                category: data.service_type || data.category || prev.category,
+                location: data.service_address?.City || data.location || prev.location,
                 description: data.service_description || prev.description,
                 established: data.establishedYear || prev.established,
                 coins: data.coins || prev.coins,
@@ -155,6 +180,13 @@ export default function VendorProfilePage() {
     }))
   }
 
+  const handleCategoryChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      category: value
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user?.id) return
@@ -162,10 +194,11 @@ export default function VendorProfilePage() {
     setIsLoading(true)
     try {
       const payload = {
-        ownerName: formData.name,
+        service_name: formData.serviceName, // NEW: Include service name
+        ownerName: formData.ownerName,
         ownerEmail: formData.email,
         service_phone: formData.phone,
-        service_name: formData.category,
+        service_type: formData.category, // Fixed: Use selected category
         service_address: {
           City: formData.location,
           State: "",
@@ -193,7 +226,8 @@ export default function VendorProfilePage() {
         await user.update({
           unsafeMetadata: {
             ...user.unsafeMetadata,
-            vendorName: formData.name,
+            serviceName: formData.serviceName, // NEW: Store service name
+            vendorName: formData.ownerName,
             vendorEmail: formData.email,
             vendorPhone: formData.phone,
             vendorCategory: formData.category,
@@ -204,7 +238,6 @@ export default function VendorProfilePage() {
         })
       } catch (clerkError) {
         console.error("Failed to update Clerk metadata:", clerkError)
-        // Don't throw error here as the main update was successful
       }
 
       setIsEditing(false)
@@ -221,9 +254,7 @@ export default function VendorProfilePage() {
     if (!user) return;
     
     try {
-      // Upload to Clerk's user profile
       await user.setProfileImage({ file });
-      
       toast.success('Profile picture updated successfully');
       setShowProfilePictureDialog(false);
     } catch (error) {
@@ -244,9 +275,7 @@ export default function VendorProfilePage() {
     
     setIsDeleting(true);
     try {
-      // Delete user from Clerk
       await user.delete();
-      
       toast.success('Account deleted successfully');
       router.push('/');
     } catch (error) {
@@ -284,11 +313,12 @@ export default function VendorProfilePage() {
         const data = await response.json()
         setFormData(prev => ({
           ...prev,
-          name: data.ownerName || prev.name,
+          serviceName: data.service_name || data.businessName || prev.serviceName,
+          ownerName: data.ownerName || prev.ownerName,
           email: data.ownerEmail || prev.email,
           phone: data.service_phone || prev.phone,
-          category: data.service_name || prev.category,
-          location: data.service_address?.City || prev.location,
+          category: data.service_type || data.category || prev.category,
+          location: data.service_address?.City || data.location || prev.location,
           description: data.service_description || prev.description,
           established: data.establishedYear || prev.established,
           coins: data.coins || prev.coins,
@@ -355,14 +385,16 @@ export default function VendorProfilePage() {
         {/* Profile Overview */}
         <Card className="md:col-span-1">
           <CardHeader>
-            <CardTitle>Profile Picture</CardTitle>
-            <CardDescription>Your vendor profile photo and basic info</CardDescription>
+            <CardTitle>Profile Overview</CardTitle>
+            <CardDescription>Your vendor profile information</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center text-center">
             <div className="relative mb-4">
               <Avatar className="h-32 w-32">
                 <AvatarImage src={user.imageUrl} />
-                <AvatarFallback>{user.firstName?.charAt(0)}{user.lastName?.charAt(0)}</AvatarFallback>
+                <AvatarFallback>
+                  {formData.serviceName?.charAt(0) || user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                </AvatarFallback>
               </Avatar>
               <Dialog open={showProfilePictureDialog} onOpenChange={setShowProfilePictureDialog}>
                 <DialogTrigger asChild>
@@ -400,8 +432,19 @@ export default function VendorProfilePage() {
                 </DialogContent>
               </Dialog>
             </div>
-            <h3 className="text-lg font-semibold">{formData.name}</h3>
+            
+            {/* Service Name Display */}
+            <h3 className="text-lg font-semibold mb-1">
+              {formData.serviceName || "No Service Name"}
+            </h3>
+            
+            {/* Owner Name */}
+            <p className="text-sm text-gray-600 mb-2">
+              Owner: {formData.ownerName || "Not set"}
+            </p>
+            
             <p className="text-sm text-gray-500">{formData.email}</p>
+            
             <div className="flex gap-2 mt-2">
               <Badge variant="secondary">
                 {user.unsafeMetadata?.role || 'vendor'}
@@ -410,6 +453,7 @@ export default function VendorProfilePage() {
                 {formData.isVerified ? "Verified" : "Pending"}
               </Badge>
             </div>
+            
             <div className="w-full mt-6 space-y-2">
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <Building className="h-4 w-4" />
@@ -418,6 +462,10 @@ export default function VendorProfilePage() {
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <MapPin className="h-4 w-4" />
                 <span>Location: {formData.location || "Not set"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Calendar className="h-4 w-4" />
+                <span>Established: {formData.established || "Not set"}</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-500">
                 <CoinDisplay balance={formData.coins} />
@@ -436,16 +484,33 @@ export default function VendorProfilePage() {
           <CardContent>
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* NEW: Service Name Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="name">Owner Name</Label>
+                  <Label htmlFor="serviceName">Service/Business Name *</Label>
                   <Input
-                    id="name"
-                    name="name"
-                    value={formData.name}
+                    id="serviceName"
+                    name="serviceName"
+                    value={formData.serviceName}
                     onChange={handleInputChange}
                     disabled={!isEditing}
+                    placeholder="Enter your service or business name"
+                    required
                   />
                 </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="ownerName">Owner Name *</Label>
+                  <Input
+                    id="ownerName"
+                    name="ownerName"
+                    value={formData.ownerName}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    placeholder="Enter owner's full name"
+                    required
+                  />
+                </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
                   <Input
@@ -456,36 +521,54 @@ export default function VendorProfilePage() {
                     disabled
                   />
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
+                  <Label htmlFor="phone">Phone Number *</Label>
                   <Input
                     id="phone"
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
                     disabled={!isEditing}
+                    placeholder="Enter phone number"
+                    required
                   />
                 </div>
+                
+                {/* FIXED: Service Category as Select */}
                 <div className="space-y-2">
-                  <Label htmlFor="category">Service Category</Label>
-                  <Input
-                    id="category"
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
+                  <Label htmlFor="category">Service Category *</Label>
+                  <Select 
+                    value={formData.category} 
+                    onValueChange={handleCategoryChange}
                     disabled={!isEditing}
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SERVICE_CATEGORIES.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+                
                 <div className="space-y-2">
-                  <Label htmlFor="location">Location</Label>
+                  <Label htmlFor="location">Location *</Label>
                   <Input
                     id="location"
                     name="location"
                     value={formData.location}
                     onChange={handleInputChange}
                     disabled={!isEditing}
+                    placeholder="Enter your city"
+                    required
                   />
                 </div>
+                
                 <div className="space-y-2">
                   <Label htmlFor="established">Established Year</Label>
                   <Input
@@ -494,11 +577,13 @@ export default function VendorProfilePage() {
                     value={formData.established}
                     onChange={handleInputChange}
                     disabled={!isEditing}
+                    placeholder="e.g., 2020"
                   />
                 </div>
               </div>
+              
               <div className="space-y-2">
-                <Label htmlFor="description">Service Description</Label>
+                <Label htmlFor="description">Service Description *</Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -506,12 +591,34 @@ export default function VendorProfilePage() {
                   onChange={handleInputChange}
                   disabled={!isEditing}
                   rows={4}
+                  placeholder="Describe your services, expertise, and what makes you unique..."
+                  required
                 />
               </div>
+              
+              {isEditing && (
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {isLoading ? "Saving..." : "Save Changes"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsEditing(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
             </form>
           </CardContent>
         </Card>
 
+        {/* Rest of the components remain the same */}
         {/* Account Management */}
         <Card className="md:col-span-3">
           <CardHeader>
@@ -519,110 +626,91 @@ export default function VendorProfilePage() {
             <CardDescription>Manage your vendor account settings and security</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="flex items-center gap-3 p-4 border rounded-lg">
-                <Shield className="h-5 w-5 text-blue-500" />
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <User className="h-6 w-6 text-gray-500" />
                 <div>
-                  <p className="font-medium">Account Status</p>
+                  <h4 className="font-medium">Update Account Details</h4>
                   <p className="text-sm text-gray-500">
-                    {user.emailAddresses?.[0]?.verification?.status === 'verified' ? 'Verified' : 'Unverified'}
+                    Change your profile information and password.
                   </p>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-3 p-4 border rounded-lg">
-                <Calendar className="h-5 w-5 text-green-500" />
-                <div>
-                  <p className="font-medium">Member Since</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(user.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3 p-4 border rounded-lg">
-                <Key className="h-5 w-5 text-purple-500" />
-                <div>
-                  <p className="font-medium">Last Login</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(user.lastSignInAt || Date.now()).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-3 p-4 border rounded-lg">
-                <User className="h-5 w-5 text-orange-500" />
-                <div>
-                  <p className="font-medium">Vendor ID</p>
-                  <p className="text-sm text-gray-500 font-mono">
-                    {user.id.slice(0, 8)}...
-                  </p>
-                </div>
-              </div>
+              <Button onClick={() => router.push('/user-profile')} variant="outline">
+                <Settings className="mr-2 h-4 w-4" />
+                Manage
+              </Button>
             </div>
 
             <Separator />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <h4 className="font-semibold">Account Actions</h4>
-                <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    onClick={handleSignOut}
-                    className="w-full justify-start"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sign Out
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleNewListing}
-                    className="w-full justify-start"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add New Listing
-                  </Button>
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <Key className="h-6 w-6 text-gray-500" />
+                <div>
+                  <h4 className="font-medium">API Keys & Integrations</h4>
+                  <p className="text-sm text-gray-500">
+                    Connect with external services and manage your API keys.
+                  </p>
                 </div>
               </div>
+              <Button variant="outline" disabled>
+                <Globe className="mr-2 h-4 w-4" />
+                Manage
+              </Button>
+            </div>
 
-              <div className="space-y-4">
-                <h4 className="font-semibold text-red-600">Danger Zone</h4>
-                <div className="space-y-2">
-                  <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        className="w-full justify-start"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Account
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <AlertTriangle className="h-5 w-5 text-red-500" />
-                          Delete Account
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete your vendor account and remove all your data from our servers.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDeleteAccount}
-                          disabled={isDeleting}
-                          className="bg-red-600 hover:bg-red-700"
-                        >
-                          {isDeleting ? "Deleting..." : "Delete Account"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+            <Separator />
+
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <LogOut className="h-6 w-6 text-gray-500" />
+                <div>
+                  <h4 className="font-medium">Sign Out</h4>
+                  <p className="text-sm text-gray-500">
+                    End your current session.
+                  </p>
                 </div>
               </div>
+              <Button onClick={handleSignOut} variant="outline">
+                Sign Out
+              </Button>
+            </div>
+
+            <Separator />
+
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <Trash2 className="h-6 w-6 text-red-500" />
+                <div>
+                  <h4 className="font-medium text-red-600">Delete Account</h4>
+                  <p className="text-sm text-gray-500">
+                    Permanently delete your account and all associated data. This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">
+                    <AlertTriangle className="mr-2 h-4 w-4" />
+                    Delete Account
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete your account and remove your data from our servers.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteAccount} disabled={isDeleting}>
+                      {isDeleting ? 'Deleting...' : 'Continue'}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>

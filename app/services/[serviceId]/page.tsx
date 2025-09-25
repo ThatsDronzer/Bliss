@@ -19,6 +19,17 @@ interface Review {
   userImage?: string;
 }
 
+interface ServiceItem {
+  _id?: string;
+  name: string;
+  description: string;
+  image: {
+    url: string;
+    public_id: string;
+  };
+  price: number;
+}
+
 interface Service {
   _id: string;
   name: string;
@@ -33,6 +44,11 @@ interface Service {
     image?: string;
   };
   category: string;
+  items?: ServiceItem[];
+}
+
+interface SelectedItem extends ServiceItem {
+  isSelected: boolean;
 }
 
 export default function ServiceDetailPage() {
@@ -48,30 +64,59 @@ export default function ServiceDetailPage() {
   const [showAllImages, setShowAllImages] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(true);
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
+  const [totalPrice, setTotalPrice] = useState(0);
   
-  // Store the actual service ID from the API
-  const [serviceId] = useState(params.serviceId);
-
-    // Default image constant
+  // Default image constant
   const DEFAULT_IMAGE = '/default-service-placeholder.jpg';  
+  const DEFAULT_ITEM_IMAGE = '/default-item-placeholder.jpg';
 
   // Derived state
   const mainImage = service?.images?.[0] || DEFAULT_IMAGE;
   const sideImages = service?.images?.slice(1) || [];
   const hasMoreImages = service?.images && service.images.length > 5;
 
+  // Initialize selected items when service data loads
+  useEffect(() => {
+    if (service) {
+      if (service.items && service.items.length > 0) {
+        const initialSelectedItems: SelectedItem[] = service.items.map(item => ({
+          ...item,
+          isSelected: true
+        }));
+        setSelectedItems(initialSelectedItems);
+        
+        // Calculate initial total price
+        const initialTotal = service.items.reduce((sum, item) => sum + item.price, 0);
+        setTotalPrice(initialTotal);
+      } else {
+        // If no items, use base price
+        setTotalPrice(service.price || 0);
+        setSelectedItems([]);
+      }
+    }
+  }, [service]);
+
   // Fetch service details
   useEffect(() => {
     const fetchServiceDetails = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/services/${serviceId}`);
-        const data = await response.json();
+        setError(null);
+        
+        if (!urlServiceId) {
+          throw new Error('Service ID is required');
+        }
+
+        const response = await fetch(`/api/services/${urlServiceId}`);
         
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch service details');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch service details');
         }
         
+        const data = await response.json();
+        console.log('Service data:', data);
         setService(data);
       } catch (err) {
         console.error('Error fetching service:', err);
@@ -110,6 +155,41 @@ export default function ServiceDetailPage() {
     }
   };
 
+  // Handle checkbox changes
+  const handleItemToggle = (index: number) => {
+    const updatedItems = [...selectedItems];
+    updatedItems[index].isSelected = !updatedItems[index].isSelected;
+    setSelectedItems(updatedItems);
+    
+    // Calculate new total price
+    const newTotal = updatedItems.reduce((sum, item) => {
+      return item.isSelected ? sum + item.price : sum;
+    }, 0);
+    setTotalPrice(newTotal);
+  };
+
+  // Select all items
+  const selectAllItems = () => {
+    const updatedItems = selectedItems.map(item => ({
+      ...item,
+      isSelected: true
+    }));
+    setSelectedItems(updatedItems);
+    
+    const newTotal = updatedItems.reduce((sum, item) => sum + item.price, 0);
+    setTotalPrice(newTotal);
+  };
+
+  // Deselect all items
+  const deselectAllItems = () => {
+    const updatedItems = selectedItems.map(item => ({
+      ...item,
+      isSelected: false
+    }));
+    setSelectedItems(updatedItems);
+    setTotalPrice(0);
+  };
+
   // Initial fetch of reviews and listen for review submissions
   useEffect(() => {
     if (urlServiceId) {
@@ -144,6 +224,9 @@ export default function ServiceDetailPage() {
         <div className="text-center py-10">
           <h2 className="text-2xl font-semibold text-gray-900 mb-2">Error</h2>
           <p className="text-gray-600">{error}</p>
+          <Link href="/services">
+            <Button className="mt-4">Back to Services</Button>
+          </Link>
         </div>
       </div>
     );
@@ -153,7 +236,11 @@ export default function ServiceDetailPage() {
     return (
       <div className="max-w-6xl mx-auto py-10 px-4">
         <div className="text-center py-10">
-          <p className="text-gray-600">Service not found</p>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Service Not Found</h2>
+          <p className="text-gray-600">The service you're looking for doesn't exist.</p>
+          <Link href="/services">
+            <Button className="mt-4">Browse Services</Button>
+          </Link>
         </div>
       </div>
     );
@@ -265,15 +352,149 @@ export default function ServiceDetailPage() {
       </div>
 
       {/* Service Details */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2">
+      <div className="grid grid-cols-1 gap-8">
+        <div>
           <div className="flex flex-wrap gap-3 items-center mb-4">
-            <span className="text-black-600 font-bold">by {service.vendor.name}</span>
-            <span className="text-pink-600 font-bold text-2xl">₹{service.price}</span>
-            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">{service.category}</span>
+            <span className="text-black-600 font-bold">
+              by {service.vendor?.name || 'Unknown Vendor'}
+            </span>
+            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+              {service.category || 'General'}
+            </span>
           </div>
           
           <p className="text-gray-700 text-lg mb-8">{service.description}</p>
+          
+          {/* Service Items and Booking Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+            {/* Service Items Checkboxes - Takes 2/3 width on large screens */}
+            <div className="lg:col-span-2">
+              {/* Service Items Checkboxes - Only show if items exist */}
+              {selectedItems.length > 0 ? (
+                <div className="bg-white p-6 rounded-lg shadow-sm border">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl text-black-600 font-bold">Service Items</h3>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={selectAllItems}
+                        className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                      >
+                        Select All
+                      </button>
+                      <button
+                        onClick={deselectAllItems}
+                        className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    {selectedItems.map((item, index) => (
+                      <div key={index} className="flex items-start gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start space-x-4 w-full">
+                          {/* Checkbox */}
+                          <input
+                            type="checkbox"
+                            checked={item.isSelected}
+                            onChange={() => handleItemToggle(index)}
+                            className="mt-1 w-5 h-5 text-pink-500 rounded focus:ring-pink-500 flex-shrink-0"
+                          />
+                          
+                          {/* Item Image */}
+                          <div className="flex-shrink-0">
+                            <div className="relative w-20 h-20 rounded-lg overflow-hidden">
+                              <Image
+                                src={item.image?.url || DEFAULT_ITEM_IMAGE}
+                                alt={item.name}
+                                fill
+                                className="object-cover"
+                                sizes="80px"
+                              />
+                            </div>
+                          </div>
+                          
+                          {/* Item Details */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h4 className="font-semibold text-gray-900 text-lg">{item.name}</h4>
+                                <p className="text-gray-600 text-sm mt-1 line-clamp-2">{item.description}</p>
+                              </div>
+                              <span className="text-pink-600 font-bold text-xl whitespace-nowrap ml-4">
+                                ₹{item.price}
+                              </span>
+                            </div>
+                            
+                            {/* Selection Indicator */}
+                            <div className={`flex items-center gap-2 mt-2 ${item.isSelected ? 'text-green-600' : 'text-gray-400'}`}>
+                              <div className={`w-2 h-2 rounded-full ${item.isSelected ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                              <span className="text-xs font-medium">
+                                {item.isSelected ? 'Included' : 'Not included'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-900 text-lg">Total Price:</span>
+                      <span className="text-3xl font-bold text-pink-600">₹{totalPrice}</span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      {selectedItems.filter(item => item.isSelected).length} of {selectedItems.length} items selected
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                // Show base price if no items are available
+                <div className="bg-white p-6 rounded-lg shadow-sm border">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-xl text-black-600 font-bold">Service Price</h3>
+                    <span className="text-2xl font-bold text-pink-600">₹{service.price}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Booking Section - Takes 1/3 width on large screens, positioned right next to items */}
+            <div className="lg:col-span-1">
+              <div className="bg-white p-6 rounded-lg shadow-md h-fit lg:sticky lg:top-24">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-xl font-semibold">Book this service</h3>
+                  <span className="text-pink-600 font-bold text-2xl">₹{totalPrice}</span>
+                </div>
+                {isSignedIn ? (
+                  <Button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 text-lg">
+                    Book Now
+                  </Button>
+                ) : (
+                  <Link href="/login" className="block">
+                    <Button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 text-lg">
+                      Login to Book
+                    </Button>
+                  </Link>
+                )}
+                {selectedItems.length > 0 && (
+                  <div className="mt-4 text-sm text-gray-600">
+                    <p>Price updates based on selected items</p>
+                    <p className="text-xs mt-1">
+                      Selected: {selectedItems.filter(item => item.isSelected).length}/{selectedItems.length} items
+                    </p>
+                  </div>
+                )}
+                <div className="mt-4 text-xs text-gray-500">
+                  <p>✓ Secure booking</p>
+                  <p>✓ Instant confirmation</p>
+                  <p>✓ Best price guarantee</p>
+                </div>
+              </div>
+            </div>
+          </div>
           
           {/* Features */}
           {service.features && service.features.length > 0 && (
@@ -300,23 +521,6 @@ export default function ServiceDetailPage() {
                 ))}
               </ul>
             </div>
-          )}
-          
-        </div>
-        
-        {/* Booking Section */}
-        <div className="bg-white p-6 rounded-lg shadow-md h-fit md:sticky md:top-24">
-          <h3 className="text-xl font-semibold mb-4">Book this service</h3>
-          {isSignedIn ? (
-            <Button className="w-full" variant="default">
-              Book Now
-            </Button>
-          ) : (
-            <Link href="/login" className="block">
-              <Button className="w-full" variant="default">
-                Login to Book
-              </Button>
-            </Link>
           )}
         </div>
       </div>

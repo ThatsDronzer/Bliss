@@ -1,3 +1,4 @@
+// app/api/services/[serviceId]/route.ts
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import Listing from "@/model/listing";
@@ -29,8 +30,8 @@ export async function GET(
       );
     }
 
-    // Get vendor details
-    const vendor = await Vendor.findById(service.owner).select('service_name service_type');
+    // Get vendor details - handle both service_name and name fields
+    const vendor = await Vendor.findById(service.owner).select('service_name name service_type');
 
     if (!vendor) {
       return NextResponse.json(
@@ -41,7 +42,7 @@ export async function GET(
 
     // Transform the data to match our needs
     const serviceDetails = {
-      id: service._id.toString(),
+      _id: service._id.toString(),
       name: service.title,
       description: service.description,
       price: service.price,
@@ -49,10 +50,14 @@ export async function GET(
       features: service.features || [],
       isActive: service.isActive,
       vendor: {
-        id: vendor._id.toString(),
-        name: vendor.service_name,
-        category: vendor.service_type
-      }
+        _id: vendor._id.toString(),
+        // Use service_name if available, fallback to name
+        name: vendor.service_name || vendor.name || 'Unknown Vendor',
+        category: vendor.service_type || 'General'
+      },
+      category: vendor.service_type || 'General',
+      // Include items array properly
+      items: service.items || []
     };
 
     return NextResponse.json(serviceDetails);
