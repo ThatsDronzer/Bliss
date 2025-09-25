@@ -250,6 +250,16 @@ export default function ServiceDetailPage() {
     <div className="max-w-6xl mx-auto py-10 px-4">
       <h1 className="text-3xl md:text-4xl font-bold mb-4">{service.name}</h1>
       
+      {/* Vendor and Category Info - Moved right after service name */}
+      <div className="flex flex-wrap gap-3 items-center mb-6">
+        <span className="text-gray-600 font-medium">
+          by {service.vendor?.name || 'Unknown Vendor'}
+        </span>
+        <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+          {service.category || 'General'}
+        </span>
+      </div>
+      
       {/* Service Rating Summary */}
       {reviews && reviews.length > 0 && (
         <div className="flex items-center gap-2 mb-6">
@@ -354,15 +364,6 @@ export default function ServiceDetailPage() {
       {/* Service Details */}
       <div className="grid grid-cols-1 gap-8">
         <div>
-          <div className="flex flex-wrap gap-3 items-center mb-4">
-            <span className="text-black-600 font-bold">
-              by {service.vendor?.name || 'Unknown Vendor'}
-            </span>
-            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-              {service.category || 'General'}
-            </span>
-          </div>
-          
           <p className="text-gray-700 text-lg mb-8">{service.description}</p>
           
           {/* Service Items and Booking Section */}
@@ -440,15 +441,9 @@ export default function ServiceDetailPage() {
                     ))}
                   </div>
                   
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-900 text-lg">Total Price:</span>
-                      <span className="text-3xl font-bold text-pink-600">₹{totalPrice}</span>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                      {selectedItems.filter(item => item.isSelected).length} of {selectedItems.length} items selected
-                    </p>
-                  </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    {selectedItems.filter(item => item.isSelected).length} of {selectedItems.length} items selected
+                  </p>
                 </div>
               ) : (
                 // Show base price if no items are available
@@ -495,31 +490,33 @@ export default function ServiceDetailPage() {
               </div>
             </div>
           </div>
-          
-          {/* Features */}
+
+          {/* Additional Features Section */}
           {service.features && service.features.length > 0 && (
             <div className="mb-8">
-              <h3 className="text-xl text-black-600 font-bold mb-4">Features & Inclusions</h3>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {service.features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <svg
-                      className="w-5 h-5 mt-1 text-green-500 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span className="text-gray-700">{feature}</span>
-                  </li>
-                ))}
-              </ul>
+              <h3 className="text-xl text-black-600 font-bold mb-4">What's Included</h3>
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {service.features.map((feature, index) => (
+                    <li key={index} className="flex items-center gap-3">
+                      <svg
+                        className="w-5 h-5 text-green-500 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span className="text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           )}
         </div>

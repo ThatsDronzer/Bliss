@@ -7,10 +7,12 @@ import { isValidObjectId } from "mongoose";
 
 export async function GET(
   request: Request,
-  { params }: { params: { serviceId: string } }
+  { params }: { params: Promise<{ serviceId: string }> }
 ) {
   try {
-    const id = params.serviceId;
+    // Await the params before using them
+    const { serviceId } = await params;
+    const id = serviceId;
 
     if (!id || !isValidObjectId(id)) {
       return NextResponse.json(
