@@ -8,6 +8,11 @@ import { ReviewCard } from '@/components/vendor/Review-Card2';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Review {
   _id: string;
@@ -51,6 +56,21 @@ interface SelectedItem extends ServiceItem {
   isSelected: boolean;
 }
 
+interface Address {
+  houseNo: string;
+  areaName: string;
+  landmark: string;
+  state: string;
+  pin: string;
+}
+
+interface BookingFormData {
+  address: Address;
+  bookingDate: string;
+  bookingTime: string; // <-- Added bookingTime
+  specialInstructions: string;
+}
+
 export default function ServiceDetailPage() {
   // Get route params and auth
   const params = useParams();
@@ -66,10 +86,34 @@ export default function ServiceDetailPage() {
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
+  const [bookingStatus, setBookingStatus] = useState<'idle' | 'pending' | 'accepted' | 'rejected'>('idle');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Default image constant
   const DEFAULT_IMAGE = '/default-service-placeholder.jpg';  
   const DEFAULT_ITEM_IMAGE = '/default-item-placeholder.jpg';
+
+  // Booking form state (added bookingTime)
+  const [bookingForm, setBookingForm] = useState<BookingFormData>({
+    address: {
+      houseNo: '',
+      areaName: '',
+      landmark: '',
+      state: '',
+      pin: ''
+    },
+    bookingDate: '',
+    bookingTime: '09:00', // Default time
+    specialInstructions: ''
+  });
+
+  // Time slots for the dropdown
+  const timeSlots = [
+    '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+    '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'
+  ];
 
   // Derived state
   const mainImage = service?.images?.[0] || DEFAULT_IMAGE;
@@ -190,6 +234,110 @@ export default function ServiceDetailPage() {
     setTotalPrice(0);
   };
 
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    
+    if (name.startsWith('address.')) {
+      const addressField = name.split('.')[1];
+      setBookingForm(prev => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          [addressField]: value
+        }
+      }));
+    } else {
+      setBookingForm(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+
+  // Handle time selection change
+  const handleTimeChange = (value: string) => {
+    setBookingForm(prev => ({
+      ...prev,
+      bookingTime: value
+    }));
+  };
+
+  // Handle service request submission
+  const handleServiceRequest = async () => {
+    if (!isSignedIn || !currentUser || !service) return;
+
+    setIsSubmitting(true);
+    try {
+      const selectedItemNames = selectedItems
+        .filter(item => item.isSelected)
+        .map(item => item.name);
+
+      const requestData = {
+        userId: currentUser.id,
+        vendorId: service.vendor._id,
+        listingId: service._id,
+        selectedItems: selectedItemNames,
+        totalPrice: totalPrice,
+        address: bookingForm.address,
+        bookingDate: bookingForm.bookingDate,
+        bookingTime: bookingForm.bookingTime, // <-- Added bookingTime
+        specialInstructions: bookingForm.specialInstructions
+      };
+
+      const response = await fetch('/api/message-create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send service request');
+      }
+
+      const result = await response.json();
+      setBookingStatus('pending');
+      setIsDialogOpen(false);
+      
+      // Reset form
+      setBookingForm({
+        address: {
+          houseNo: '',
+          areaName: '',
+          landmark: '',
+          state: '',
+          pin: ''
+        },
+        bookingDate: '',
+        bookingTime: '09:00',
+        specialInstructions: ''
+      });
+
+      console.log('Service request sent successfully:', result);
+    } catch (error) {
+      console.error('Error sending service request:', error);
+      alert('Failed to send service request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Check if form is valid (added bookingTime check)
+  const isFormValid = () => {
+    return (
+      bookingForm.address.houseNo &&
+      bookingForm.address.areaName &&
+      bookingForm.address.landmark &&
+      bookingForm.address.state &&
+      bookingForm.address.pin &&
+      bookingForm.bookingDate &&
+      bookingForm.bookingTime
+    );
+  };
+
   // Initial fetch of reviews and listen for review submissions
   useEffect(() => {
     if (urlServiceId) {
@@ -207,6 +355,181 @@ export default function ServiceDetailPage() {
       };
     }
   }, [urlServiceId]);
+
+  // Get button text and style based on booking status
+  const getBookingButton = () => {
+    switch (bookingStatus) {
+      case 'pending':
+        return (
+          <Button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 text-lg" disabled>
+            ⏳ Requested
+          </Button>
+        );
+      case 'accepted':
+        return (
+          <Button className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 text-lg" disabled>
+            ✓ Accepted
+          </Button>
+        );
+      case 'rejected':
+        return (
+          <Button className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 text-lg" disabled>
+            ✗ Rejected
+          </Button>
+        );
+      default:
+        return (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 text-lg">
+                Request Service
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Request Service</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                {/* Service Summary */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">Service Summary</h4>
+                  <p className="text-sm text-gray-600">{service?.name}</p>
+                  <p className="text-lg font-bold text-pink-600">₹{totalPrice}</p>
+                  {selectedItems.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm font-medium">Selected Items:</p>
+                      <ul className="text-sm text-gray-600 list-disc list-inside">
+                        {selectedItems.filter(item => item.isSelected).map((item, index) => (
+                          <li key={index}>{item.name} - ₹{item.price}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Address Details */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="houseNo">House No./Building Name *</Label>
+                    <Input
+                      id="houseNo"
+                      name="address.houseNo"
+                      value={bookingForm.address.houseNo}
+                      onChange={handleInputChange}
+                      placeholder="Enter house number or building name"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="areaName">Area Name *</Label>
+                    <Input
+                      id="areaName"
+                      name="address.areaName"
+                      value={bookingForm.address.areaName}
+                      onChange={handleInputChange}
+                      placeholder="Enter area name"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="landmark">Landmark *</Label>
+                    <Input
+                      id="landmark"
+                      name="address.landmark"
+                      value={bookingForm.address.landmark}
+                      onChange={handleInputChange}
+                      placeholder="Enter nearby landmark"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State *</Label>
+                    <Input
+                      id="state"
+                      name="address.state"
+                      value={bookingForm.address.state}
+                      onChange={handleInputChange}
+                      placeholder="Enter state"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="pin">PIN Code *</Label>
+                    <Input
+                      id="pin"
+                      name="address.pin"
+                      value={bookingForm.address.pin}
+                      onChange={handleInputChange}
+                      placeholder="Enter PIN code"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bookingDate">Preferred Date *</Label>
+                    <Input
+                      id="bookingDate"
+                      name="bookingDate"
+                      type="date"
+                      value={bookingForm.bookingDate}
+                      onChange={handleInputChange}
+                      required
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bookingTime">Preferred Time *</Label>
+                    <Select value={bookingForm.bookingTime} onValueChange={handleTimeChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select time" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map((time) => (
+                          <SelectItem key={time} value={time}>
+                            {time}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Special Instructions */}
+                <div className="space-y-2">
+                  <Label htmlFor="specialInstructions">Special Instructions</Label>
+                  <Textarea
+                    id="specialInstructions"
+                    name="specialInstructions"
+                    value={bookingForm.specialInstructions}
+                    onChange={handleInputChange}
+                    placeholder="Any special requirements or instructions..."
+                    rows={3}
+                  />
+                </div>
+
+                {/* Booking Summary */}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">Booking Summary</h4>
+                  <div className="text-sm space-y-1">
+                    <p><strong>Date:</strong> {bookingForm.bookingDate || 'Not selected'}</p>
+                    <p><strong>Time:</strong> {bookingForm.bookingTime}</p>
+                    <p><strong>Total Price:</strong> ₹{totalPrice}</p>
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  onClick={handleServiceRequest}
+                  disabled={!isFormValid() || isSubmitting}
+                  className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 text-lg"
+                >
+                  {isSubmitting ? 'Sending Request...' : 'Send Service Request'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+    }
+  };
 
   if (loading) {
     return (
@@ -249,6 +572,16 @@ export default function ServiceDetailPage() {
   return (
     <div className="max-w-6xl mx-auto py-10 px-4">
       <h1 className="text-3xl md:text-4xl font-bold mb-4">{service.name}</h1>
+      
+      {/* Vendor and Category Info */}
+      <div className="flex flex-wrap gap-3 items-center mb-6">
+        <span className="text-gray-600 font-medium">
+          by {service.vendor?.name || 'Unknown Vendor'}
+        </span>
+        <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
+          {service.category || 'General'}
+        </span>
+      </div>
       
       {/* Service Rating Summary */}
       {reviews && reviews.length > 0 && (
@@ -339,8 +672,8 @@ export default function ServiceDetailPage() {
           <button
             onClick={() => setShowAllImages(true)}
             className="absolute bottom-4 right-4 px-6 py-3 bg-pink-500 hover:bg-pink-600 rounded-md 
-                     text-white font-medium text-sm shadow-lg 
-                     transition-colors flex items-center gap-2 z-10"
+                       text-white font-medium text-sm shadow-lg 
+                       transition-colors flex items-center gap-2 z-10"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
@@ -354,15 +687,6 @@ export default function ServiceDetailPage() {
       {/* Service Details */}
       <div className="grid grid-cols-1 gap-8">
         <div>
-          <div className="flex flex-wrap gap-3 items-center mb-4">
-            <span className="text-black-600 font-bold">
-              by {service.vendor?.name || 'Unknown Vendor'}
-            </span>
-            <span className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm">
-              {service.category || 'General'}
-            </span>
-          </div>
-          
           <p className="text-gray-700 text-lg mb-8">{service.description}</p>
           
           {/* Service Items and Booking Section */}
@@ -440,15 +764,9 @@ export default function ServiceDetailPage() {
                     ))}
                   </div>
                   
-                  <div className="mt-4 pt-4 border-t">
-                    <div className="flex justify-between items-center">
-                      <span className="font-semibold text-gray-900 text-lg">Total Price:</span>
-                      <span className="text-3xl font-bold text-pink-600">₹{totalPrice}</span>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-2">
-                      {selectedItems.filter(item => item.isSelected).length} of {selectedItems.length} items selected
-                    </p>
-                  </div>
+                  <p className="text-sm text-gray-500 mt-2">
+                    {selectedItems.filter(item => item.isSelected).length} of {selectedItems.length} items selected
+                  </p>
                 </div>
               ) : (
                 // Show base price if no items are available
@@ -461,24 +779,24 @@ export default function ServiceDetailPage() {
               )}
             </div>
 
-            {/* Booking Section - Takes 1/3 width on large screens, positioned right next to items */}
+            {/* Booking Section - Takes 1/3 width on large screens */}
             <div className="lg:col-span-1">
               <div className="bg-white p-6 rounded-lg shadow-md h-fit lg:sticky lg:top-24">
                 <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-xl font-semibold">Book this service</h3>
+                  <h3 className="text-xl font-semibold">Request this service</h3>
                   <span className="text-pink-600 font-bold text-2xl">₹{totalPrice}</span>
                 </div>
+                
                 {isSignedIn ? (
-                  <Button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 text-lg">
-                    Book Now
-                  </Button>
+                  getBookingButton()
                 ) : (
                   <Link href="/login" className="block">
                     <Button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 text-lg">
-                      Login to Book
+                      Login to Request
                     </Button>
                   </Link>
                 )}
+                
                 {selectedItems.length > 0 && (
                   <div className="mt-4 text-sm text-gray-600">
                     <p>Price updates based on selected items</p>
@@ -487,51 +805,67 @@ export default function ServiceDetailPage() {
                     </p>
                   </div>
                 )}
+                
                 <div className="mt-4 text-xs text-gray-500">
                   <p>✓ Secure booking</p>
                   <p>✓ Instant confirmation</p>
                   <p>✓ Best price guarantee</p>
                 </div>
+
+                {/* Booking Status Info */}
+                {bookingStatus !== 'idle' && (
+                  <div className={`mt-4 p-3 rounded-lg text-sm ${
+                    bookingStatus === 'pending' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
+                    bookingStatus === 'accepted' ? 'bg-green-50 text-green-800 border border-green-200' :
+                    'bg-red-50 text-red-800 border border-red-200'
+                  }`}>
+                    {bookingStatus === 'pending' && 'Your request has been sent and is pending approval.'}
+                    {bookingStatus === 'accepted' && 'Your service request has been accepted!'}
+                    {bookingStatus === 'rejected' && 'Your service request has been declined.'}
+                  </div>
+                )}
               </div>
             </div>
           </div>
-          
-          {/* Features */}
+
+          {/* Additional Features Section */}
           {service.features && service.features.length > 0 && (
             <div className="mb-8">
-              <h3 className="text-xl text-black-600 font-bold mb-4">Features & Inclusions</h3>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {service.features.map((feature, index) => (
-                  <li key={index} className="flex items-start gap-2">
-                    <svg
-                      className="w-5 h-5 mt-1 text-green-500 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <span className="text-gray-700">{feature}</span>
-                  </li>
-                ))}
-              </ul>
+              <h3 className="text-xl text-black-600 font-bold mb-4">What's Included</h3>
+                <div className="bg-gray-50 p-6 rounded-lg">
+                  <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {service.features.map((feature, index) => (
+                      <li key={index} className="flex items-center gap-3">
+                        <svg
+                          className="w-5 h-5 text-green-500 flex-shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <span className="text-gray-700">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Reviews and Ratings Section */}
+       {/* Reviews and Ratings Section */}
       <div className="mt-12">
         <h2 className="text-2xl font-semibold mb-6">Reviews & Ratings</h2>
         
         {/* Review Form */}
         {isSignedIn ? (
-          <div className="w-full bg-gray-50 p-5 rounded-lg">
+          <div className="w-full bg-gray-50 p-5 rounded-lg mb-8">
             <h4 className="text-lg font-semibold mb-3">Write a Review</h4>
             <ReviewForm 
               targetId={urlServiceId} 
@@ -539,7 +873,7 @@ export default function ServiceDetailPage() {
             />
           </div>
         ) : (
-          <div className="w-full p-5 bg-gray-50 rounded-lg text-center">
+          <div className="w-full p-5 bg-gray-50 rounded-lg text-center mb-8">
             <p className="text-gray-600 mb-3">Sign in to write a review</p>
             <Link href="/login">
               <Button variant="outline">Sign In</Button>
@@ -549,7 +883,7 @@ export default function ServiceDetailPage() {
 
         {/* Review Statistics */}
         {reviews.length > 0 && (
-          <div className="mt-8 bg-white p-6 rounded-lg shadow-sm">
+          <div className="mt-8 bg-white p-6 rounded-lg shadow-sm border">
             <div className="flex flex-col md:flex-row md:items-center md:gap-8 w-full">
               {/* Average Rating Display */}
               <div className="text-center mb-6 md:mb-0 md:w-48">
