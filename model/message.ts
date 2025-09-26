@@ -46,6 +46,7 @@ export interface IMessageData extends Document {
     }[];
     totalPrice: number;
     bookingDate: Date;
+    bookingTime: string; // <-- Field added here
     address: {
       houseNo: string;
       areaName: string;
@@ -106,6 +107,7 @@ const MessageDataSchema = new Schema<IMessageData>({
     }],
     totalPrice: { type: Number, required: true },
     bookingDate: { type: Date, required: true },
+    bookingTime: { type: String, required: true }, // <-- Field added here
     address: {
       houseNo: { type: String, required: true },
       areaName: { type: String, required: true },
@@ -129,5 +131,6 @@ MessageDataSchema.index({ 'user.id': 1, createdAt: -1 });
 MessageDataSchema.index({ 'vendor.id': 1, createdAt: -1 });
 MessageDataSchema.index({ 'bookingDetails.status': 1 });
 
-const MessageData = mongoose.model<IMessageData>('MessageData', MessageDataSchema);
+const MessageData = mongoose.models.MessageData || mongoose.model<IMessageData>('MessageData', MessageDataSchema);
+
 export default MessageData;

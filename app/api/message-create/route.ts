@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import MessageData from '@/model/message';
-import User from '@/model/user';
+import User, { IUser } from '@/model/user';
 import Listing from "@/model/listing";
-import Vendor from "@/model/vendor";
-import {IListingItem} from "@/model/listing";
-
-
+import Vendor, { IVendor } from "@/model/vendor";
+import { IListingItem } from "@/model/listing";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,103 +16,82 @@ export async function POST(request: NextRequest) {
       totalPrice,
       address, 
       bookingDate,
+      bookingTime,
       specialInstructions 
     } = await request.json();
 
-    // Validate required fields
-    if (!userId || !vendorId || !listingId || !address || !bookingDate || totalPrice === undefined) {
+    if (!userId || !vendorId || !listingId || !address || !bookingDate || !bookingTime || totalPrice === undefined) {
       return NextResponse.json(
-        { message: 'Missing required fields: userId, vendorId, listingId, address, bookingDate, totalPrice' },
+        { message: 'Missing required fields: userId, vendorId, listingId, address, bookingDate, bookingTime, totalPrice' },
         { status: 400 }
       );
     }
-
-    // Validate address fields
     if (!address.houseNo || !address.areaName || !address.landmark || !address.state || !address.pin) {
-      return NextResponse.json(
-        { message: 'Missing required address fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Missing required address fields' }, { status: 400 });
     }
-
-    // Validate totalPrice is a number and positive
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(bookingTime)) {
+      return NextResponse.json({ message: 'Invalid booking time format. Please use HH:MM format' }, { status: 400 });
+    }
     if (typeof totalPrice !== 'number' || totalPrice < 0) {
-      return NextResponse.json(
-        { message: 'Total price must be a positive number' },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Total price must be a positive number' }, { status: 400 });
     }
 
-    // Connect to database if not already connected
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(process.env.MONGODB_URI!);
     }
 
-    // Fetch user, vendor, and listing data
-    const [user, vendor, listing] = await Promise.all([
-      User.findOne({ clerkId: userId }),
-      Vendor.findOne({ clerkId: vendorId }),
-      Listing.findById(listingId)
-    ]);
-
-    if (!user) {
-      return NextResponse.json(
-        { message: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!vendor) {
-      return NextResponse.json(
-        { message: 'Vendor not found' },
-        { status: 404 }
-      );
-    }
-
-    if (!listing) {
-      return NextResponse.json(
-        { message: 'Listing not found' },
-        { status: 404 }
-      );
-    }
-
-    // Get item details for selected items
-    const selectedItemsWithDetails: any[] = [];
-
-    if (selectedItems && selectedItems.length > 0) {
-      selectedItems.forEach((itemName: string) => {
-        const listingItem: IListingItem | undefined = listing.items?.find((item: IListingItem) => item.name === itemName);
-        if (listingItem) {
-          selectedItemsWithDetails.push({
-            name: listingItem.name,
-            description: listingItem.description,
-            price: listingItem.price,
-            image: listingItem.image
-          });
-        }
-      });
-    } else {
-      // If no specific items selected, include all listing items
-      if (listing.items && listing.items.length > 0) {
-        listing.items.forEach((item: IListingItem) => {
-          selectedItemsWithDetails.push({
-            name: item.name,
-            description: item.description,
-            price: item.price,
-            image: item.image
-          });
-        });
+    // Find the person making the booking (the "booker"). They could be a regular User or a Vendor.
+    let booker: (IUser | IVendor) | null = await User.findOne({ clerkId: userId });
+    let bookerIsVendor = false;
+    if (!booker) {
+      booker = await Vendor.findOne({ clerkId: userId });
+      if (booker) {
+        bookerIsVendor = true;
       }
     }
 
+    // Fetch the service listing and its owner (the vendor)
+    const [listing, vendor] = await Promise.all([
+      Listing.findById(listingId),
+      Vendor.findById(vendorId) 
+    ]);
+
+    // Centralized validation for all fetched documents
+    if (!booker) {
+      return NextResponse.json({ message: 'Booking user not found' }, { status: 404 });
+    }
+    if (!vendor) {
+      return NextResponse.json({ message: 'Vendor not found' }, { status: 404 });
+    }
+    if (!listing) {
+      return NextResponse.json({ message: 'Listing not found' }, { status: 404 });
+    }
+
+    const selectedItemsWithDetails: any[] = [];
+    const itemsSource = (listing.items && listing.items.length > 0) ? listing.items : [];
+    const itemNamesToFind = (selectedItems && selectedItems.length > 0) ? selectedItems : itemsSource.map((item: IListingItem) => item.name);
+
+    itemNamesToFind.forEach((itemName: string) => {
+      const listingItem = itemsSource.find((item: IListingItem) => item.name === itemName);
+      if (listingItem) {
+        selectedItemsWithDetails.push({
+          name: listingItem.name,
+          description: listingItem.description,
+          price: listingItem.price,
+          image: listingItem.image
+        });
+      }
+    });
+
     // Create the message with pending status
     const newMessage = new MessageData({
-      user: {
-        id: user.clerkId,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        address: user.address
+      user: { // FIX 2: Normalize booker's data from either User or Vendor schema
+        id: booker.clerkId,
+        name: bookerIsVendor ? (booker as IVendor).ownerName : (booker as IUser).name,
+        email: bookerIsVendor ? (booker as IVendor).ownerEmail : (booker as IUser).email,
+        phone: bookerIsVendor ? (booker as IVendor).owner_contactNo?.[0] : (booker as IUser).phone,
+        address: (booker as IUser).address 
       },
       vendor: {
         id: vendor.clerkId,
@@ -133,34 +110,30 @@ export async function POST(request: NextRequest) {
       },
       bookingDetails: {
         selectedItems: selectedItemsWithDetails,
-        totalPrice: totalPrice, // Use the price calculated from frontend
+        totalPrice: totalPrice,
         bookingDate: new Date(bookingDate),
+        bookingTime: bookingTime,
         address: address,
         specialInstructions: specialInstructions,
         status: 'pending'
       }
     });
 
-    // Save the message
     const savedMessage = await newMessage.save();
 
-    // Update user and vendor with the new message reference
+    // FIX 3: Update the correct collection (User or Vendor) for the booker
+    const updateBookerPromise = bookerIsVendor
+      ? Vendor.findByIdAndUpdate(booker._id, { $push: { messages: savedMessage._id } })
+      : User.findByIdAndUpdate(booker._id, { $push: { messages: savedMessage._id } });
+
+    // Update booker and vendor with the new message reference
     await Promise.all([
-      User.findByIdAndUpdate(
-        user._id, 
-        { $push: { messages: savedMessage._id } }
-      ),
-      Vendor.findByIdAndUpdate(
-        vendor._id, 
-        { $push: { messages: savedMessage._id } }
-      )
+      updateBookerPromise,
+      Vendor.findByIdAndUpdate(vendor._id, { $push: { messages: savedMessage._id } })
     ]);
 
     return NextResponse.json(
-      {
-        message: 'Message created successfully',
-        data: savedMessage
-      },
+      { message: 'Message created successfully', data: savedMessage },
       { status: 201 }
     );
 
@@ -175,4 +148,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
