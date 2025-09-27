@@ -34,4 +34,4 @@ package-lock.json
 pnpm-lock.yaml
 package.json
 
-.DS_Store
+.DS_Store.vscode/

@@ -14,6 +14,7 @@ import {
   LogOut,
   Coins,
   Gift,
+  Mail,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -36,6 +37,11 @@ const navItems = [
     title: "My Coins",
     href: "/dashboard/coins",
     icon: <Coins className="w-5 h-5" />,
+  },
+  {
+    title: "Messages",
+    href: "/dashboard/messages",
+    icon: <Mail className="w-5 h-5" />,
   },
   {
     title: "Favorites",

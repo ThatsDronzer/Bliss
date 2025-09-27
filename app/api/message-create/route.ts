@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
 
     // Fetch the service listing and its owner (the vendor)
     const [listing, vendor] = await Promise.all([
-      Listing.findById(listingId),
-      Vendor.findById(vendorId) 
+      Listing.findById(listingId).exec(),
+      Vendor.findById(vendorId).exec()
     ]);
 
     // Centralized validation for all fetched documents

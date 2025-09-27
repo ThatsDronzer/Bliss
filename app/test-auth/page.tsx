@@ -49,6 +49,36 @@ export default function TestAuthPage() {
     }
   };
 
+  const createTestData = async () => {
+    try {
+      const response = await fetch('/api/test-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      console.log('Test data created:', data);
+    } catch (error) {
+      console.error('Failed to create test data:', error);
+    }
+  };
+
+  const updateTestVendor = async () => {
+    try {
+      const response = await fetch('/api/test-data/update-vendor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      console.log('Vendor update response:', data);
+    } catch (error) {
+      console.error('Failed to update vendor:', error);
+    }
+  };
+
   if (!isLoaded) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -124,9 +154,37 @@ export default function TestAuthPage() {
                 Test Vendor Signup
               </Button>
               {isSignedIn && (
-                <Button onClick={testDashboardAccess} className="w-full">
-                  Access Dashboard
-                </Button>
+                <>
+                  <Button onClick={testDashboardAccess} className="w-full">
+                    Access Dashboard
+                  </Button>
+                  <Button onClick={createTestData} className="w-full">
+                    Create Test Data
+                  </Button>
+                  <Button onClick={updateTestVendor} className="w-full">
+                    Update Test Vendor
+                  </Button>
+                  <Button 
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/test-data/cleanup', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        const data = await response.json();
+                        console.log('Cleanup response:', data);
+                      } catch (error) {
+                        console.error('Cleanup failed:', error);
+                      }
+                    }} 
+                    variant="destructive"
+                    className="w-full"
+                  >
+                    Cleanup Test Data
+                  </Button>
+                </>
               )}
             </div>
           </CardContent>
