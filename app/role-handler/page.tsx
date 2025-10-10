@@ -104,6 +104,8 @@ export default function RoleHandlerPage() {
     const timer = setTimeout(() => {
       if (role === 'vendor') {
         router.push('/vendor-dashboard');
+      } else if (role === 'admin') {
+        router.push('/admin-dashboard');
       } else {
         router.push('/dashboard');
       }

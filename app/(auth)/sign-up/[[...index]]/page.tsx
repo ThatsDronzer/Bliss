@@ -13,7 +13,7 @@ export default function SignUpPage() {
         path="/sign-up"
         routing="path"
         signInUrl={`/sign-in?role=${role}`}
-        forceRedirectUrl={"/"}
+        forceRedirectUrl={`/role-handler?role=${role}`}
         appearance={{
           elements: {
             formButtonPrimary: "bg-pink-600 hover:bg-pink-700",

@@ -15,7 +15,7 @@ interface ClerkEvent {
     first_name: string;
     last_name: string;
     unsafe_metadata?: {
-      role?: "user" | "vendor";
+      role?: "user" | "vendor" | "admin";
     };
   };
 }
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       console.log(`[Webhook] User record created or updated for ${id}.`);
     }
 
-    // Handle vendor upgrade
+    // Handle vendor upgrade and admin role
    if (eventType === "user.updated") {
   const { id, unsafe_metadata } = evt.data;
   const role = unsafe_metadata?.role;
@@ -84,6 +84,16 @@ export async function POST(req: Request) {
 
     await User.findOneAndDelete({ clerkId: id });
     console.log(`[Webhook] ✅ User ${id} successfully migrated to Vendor.`);
+  }
+
+  if (role === "admin") {
+    // Update existing user record to have admin role
+    await User.findOneAndUpdate(
+      { clerkId: id },
+      { $set: { role: "admin" } },
+      { upsert: false }
+    );
+    console.log(`[Webhook] ✅ User ${id} role updated to admin.`);
   }
 }
 

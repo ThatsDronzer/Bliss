@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Search, MoreHorizontal, Download, CheckCircle, XCircle, Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 
+import { useRoleAuth } from "@/hooks/use-role-auth"
 import { useAuth } from "@/lib/auth"
 import { useBooking } from "@/hooks/use-booking"
 import { Button } from "@/components/ui/button"
@@ -26,20 +27,27 @@ import { cn } from "@/lib/utils"
 
 export default function AdminBookingsPage() {
   const router = useRouter()
-  const { isAuthenticated, isAdmin, bookings } = useAuth()
+  const { isAuthorized, isLoading } = useRoleAuth("admin")
+  const { bookings } = useAuth()
   const { handleBookingCompletion, isProcessing } = useBooking()
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined)
 
-  // Redirect if not authenticated as admin
-  useEffect(() => {
-    if (!isAuthenticated || !isAdmin) {
-      router.push("/")
-    }
-  }, [isAuthenticated, isAdmin, router])
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
-  if (!isAuthenticated || !isAdmin) {
+  // Return null if not authorized (will redirect via useRoleAuth hook)
+  if (!isAuthorized) {
     return null
   }
 
