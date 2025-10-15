@@ -46,7 +46,7 @@ export interface IMessageData extends Document {
     }[];
     totalPrice: number;
     bookingDate: Date;
-    bookingTime: string; // <-- Field added here
+    bookingTime: string;
     address: {
       houseNo: string;
       areaName: string;
@@ -55,7 +55,7 @@ export interface IMessageData extends Document {
       pin: string;
     };
     specialInstructions?: string;
-    status: 'accepted' | 'not-accepted' | 'pending';
+    status: 'accepted' | 'not-accepted' | 'pending' | 'cancelled';
   };
   createdAt: Date;
   updatedAt: Date;
@@ -107,7 +107,7 @@ const MessageDataSchema = new Schema<IMessageData>({
     }],
     totalPrice: { type: Number, required: true },
     bookingDate: { type: Date, required: true },
-    bookingTime: { type: String, required: true }, // <-- Field added here
+    bookingTime: { type: String, required: true },
     address: {
       houseNo: { type: String, required: true },
       areaName: { type: String, required: true },
@@ -118,7 +118,7 @@ const MessageDataSchema = new Schema<IMessageData>({
     specialInstructions: { type: String },
     status: {
       type: String,
-      enum: ['accepted', 'not-accepted', 'pending'],
+      enum: ['accepted', 'not-accepted', 'pending', 'cancelled'],
       default: 'pending'
     }
   }
@@ -129,6 +129,7 @@ const MessageDataSchema = new Schema<IMessageData>({
 // Index for better query performance
 MessageDataSchema.index({ 'user.id': 1, createdAt: -1 });
 MessageDataSchema.index({ 'vendor.id': 1, createdAt: -1 });
+MessageDataSchema.index({ 'listing.id': 1 });
 MessageDataSchema.index({ 'bookingDetails.status': 1 });
 
 const MessageData = mongoose.models.MessageData || mongoose.model<IMessageData>('MessageData', MessageDataSchema);

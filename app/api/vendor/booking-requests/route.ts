@@ -14,11 +14,9 @@ export async function GET(request: NextRequest) {
 
     console.log('Authenticated userId:', userId);
 
-    // Connect to database
-    await dbConnect()
+    await dbConnect();
     console.log('Connected to database');
 
-    // Get query parameters for filtering
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status')
     const limit = parseInt(searchParams.get('limit') || '50')
@@ -26,25 +24,22 @@ export async function GET(request: NextRequest) {
     
     console.log('Query params:', { status, limit, page });
 
-    // Build query
+    // Build query - include cancelled status in queries if needed
     const query = {
       'vendor.id': userId,
-      ...(status && { 'bookingDetails.status': status })
+      ...(status && status !== 'all' && { 'bookingDetails.status': status })
     }
     console.log('MongoDB query:', JSON.stringify(query));
 
-    // Get total count for pagination
     const total = await MessageData.countDocuments(query)
     console.log('Total messages found:', total);
 
-    // Get messages with pagination
     const messages = await MessageData.find(query)
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .lean()
 
-    // Transform the messages
     const transformedMessages = messages.map((message: any) => ({
       id: message._id.toString(),
       user: {
@@ -61,7 +56,7 @@ export async function GET(request: NextRequest) {
         location: message.listing.location,
       },
       bookingDetails: {
-        selectedItems: message.bookingDetails.selectedItems.map(item => ({
+        selectedItems: message.bookingDetails.selectedItems.map((item: any) => ({
           name: item.name,
           description: item.description,
           price: item.price,
