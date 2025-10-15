@@ -39,7 +39,7 @@ interface BookingRequest {
       state?: string
       pin?: string
     } | null
-    status: 'accepted' | 'not-accepted' | 'pending'
+    status: 'accepted' | 'not-accepted' | 'pending' | 'cancelled'
   }
   createdAt: Date
 }
@@ -55,7 +55,6 @@ export default function VendorMessagesPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  // Redirect if not authenticated or not a vendor
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
       router.push("/sign-in?role=vendor")
@@ -64,19 +63,17 @@ export default function VendorMessagesPage() {
     }
   }, [isLoaded, isSignedIn, userRole, router])
 
-  // Fetch booking requests
   useEffect(() => {
     const fetchBookingRequests = async () => {
       try {
         const response = await fetch(`/api/vendor/booking-requests?page=${currentPage}&limit=9`)
         const data = await response.json()
         
-        // Ensure we always set an array, even if empty
         setBookingRequests(Array.isArray(data.messages) ? data.messages : [])
         setTotalPages(data.pagination?.pages || 1)
       } catch (error) {
         console.error('Error fetching booking requests:', error)
-        setBookingRequests([]) // Set empty array on error
+        setBookingRequests([])
       } finally {
         setLoading(false)
       }
@@ -98,7 +95,6 @@ export default function VendorMessagesPage() {
       })
 
       if (response.ok) {
-        // Update local state
         setBookingRequests(prevRequests =>
           prevRequests.map(request =>
             request.id === requestId
@@ -120,6 +116,23 @@ export default function VendorMessagesPage() {
     request.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     request.listing.title.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      pending: { color: 'bg-yellow-100 text-yellow-800', text: 'Pending' },
+      accepted: { color: 'bg-green-100 text-green-800', text: 'Accepted' },
+      'not-accepted': { color: 'bg-red-100 text-red-800', text: 'Denied' },
+      cancelled: { color: 'bg-gray-100 text-gray-800', text: 'Cancelled' }
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    
+    return (
+      <div className={`mt-4 text-center py-2 rounded-lg ${config.color}`}>
+        {config.text}
+      </div>
+    );
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -223,15 +236,7 @@ export default function VendorMessagesPage() {
                   )}
 
                   {/* Status Badge */}
-                  {request.bookingDetails.status !== 'pending' && (
-                    <div className={`mt-4 text-center py-2 rounded-lg ${
-                      request.bookingDetails.status === 'accepted' 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {request.bookingDetails.status === 'accepted' ? 'Accepted' : 'Denied'}
-                    </div>
-                  )}
+                  {request.bookingDetails.status !== 'pending' && getStatusBadge(request.bookingDetails.status)}
                 </div>
               </div>
             </Card>

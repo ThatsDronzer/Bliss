@@ -14,7 +14,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { status } = await request.json()
+    const { status } = await request.json();
     console.log('Updating status for request:', params.requestId, 'to:', status);
     
     if (!status || !['accepted', 'not-accepted'].includes(status)) {
@@ -22,11 +22,9 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
     }
 
-    // Connect to database
-    await dbConnect()
+    await dbConnect();
     console.log('Connected to database');
 
-    // Update the message status
     console.log('Updating message with query:', {
       _id: params.requestId,
       'vendor.id': userId
@@ -35,7 +33,8 @@ export async function PATCH(
     const updatedMessage = await MessageData.findOneAndUpdate(
       {
         _id: params.requestId,
-        'vendor.id': userId
+        'vendor.id': userId,
+        'bookingDetails.status': 'pending' // Only allow updates for pending requests
       },
       {
         'bookingDetails.status': status
@@ -45,15 +44,13 @@ export async function PATCH(
 
     if (!updatedMessage) {
       console.log('No message found with ID:', params.requestId);
-      return NextResponse.json({ error: 'Booking request not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Booking request not found or cannot be updated' }, { status: 404 })
     }
 
     console.log('Successfully updated message:', updatedMessage._id);
 
-    // Type assertion for the mongoose document
     const msg = updatedMessage as any;
     
-    // Transform the response
     const transformedMessage = {
       id: msg._id.toString(),
       user: {
