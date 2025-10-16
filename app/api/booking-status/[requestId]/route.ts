@@ -17,7 +17,9 @@ export async function PATCH(
     const { status } = await request.json();
     
     if (status !== 'cancelled') {
-      return NextResponse.json({ error: 'Invalid status. Only cancellation allowed from user side.' }, { status: 400 });
+      return NextResponse.json({ 
+        error: 'Invalid status. Only cancellation allowed from user side.' 
+      }, { status: 400 });
     }
 
     await dbConnect();
@@ -30,20 +32,26 @@ export async function PATCH(
         'bookingDetails.status': { $in: ['pending', 'accepted'] }
       },
       {
-        'bookingDetails.status': 'cancelled'
+        'bookingDetails.status': 'cancelled',
+        $set: {
+          'paymentStatus.status': 'cancelled'
+        }
       },
       { new: true }
     );
 
     if (!updatedMessage) {
-      return NextResponse.json({ error: 'Booking request not found or cannot be cancelled' }, { status: 404 });
+      return NextResponse.json({ 
+        error: 'Booking request not found or cannot be cancelled' 
+      }, { status: 404 });
     }
 
     return NextResponse.json({
       message: 'Booking cancelled successfully',
       booking: {
         _id: updatedMessage._id.toString(),
-        status: updatedMessage.bookingDetails.status
+        status: updatedMessage.bookingDetails.status,
+        paymentStatus: updatedMessage.paymentStatus.status
       }
     });
 

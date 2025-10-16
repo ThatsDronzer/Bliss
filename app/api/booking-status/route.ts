@@ -24,17 +24,27 @@ export async function GET(request: NextRequest) {
     const booking = await MessageData.findOne({
       'user.id': userId,
       'listing.id': serviceId,
-      'bookingDetails.status': { $in: ['pending', 'accepted'] }
-    }).sort({ createdAt: -1 });
+      'bookingDetails.status': { $in: ['pending', 'accepted', 'cancelled'] }
+    })
+    .sort({ createdAt: -1 })
+    .select('_id bookingDetails.status paymentStatus createdAt listing.title bookingDetails.totalPrice');
 
     if (!booking) {
-      return NextResponse.json({ booking: null });
+      return NextResponse.json({ 
+        booking: null,
+        message: 'No booking found for this service'
+      });
     }
 
     return NextResponse.json({
       booking: {
         _id: booking._id.toString(),
-        status: booking.bookingDetails.status
+        status: booking.bookingDetails.status,
+        paymentStatus: booking.paymentStatus,
+        createdAt: booking.createdAt,
+        listingTitle: booking.listing.title,
+        totalPrice: booking.bookingDetails.totalPrice,
+        canMakePayment: booking.bookingDetails.status === 'accepted' && booking.paymentStatus.status === 'pending'
       }
     });
 
