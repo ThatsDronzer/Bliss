@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { useRazorpay } from '@/hooks/useRazorpay';
 
 interface Review {
   _id: string;
@@ -81,6 +82,7 @@ export default function ServiceDetailPage() {
   const params = useParams();
   const urlServiceId = params.serviceId as string;
   const { isSignedIn, user: currentUser } = useUser();
+  const { loading: paymentLoading, initiatePayment } = useRazorpay();
 
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,6 +98,8 @@ export default function ServiceDetailPage() {
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [acceptedMessageId, setAcceptedMessageId] = useState<string | null>(null);
+  const [canMakePayment, setCanMakePayment] = useState(false);
   
   const DEFAULT_IMAGE = '/default-service-placeholder.jpg';  
   const DEFAULT_ITEM_IMAGE = '/default-item-placeholder.jpg';
@@ -123,7 +127,7 @@ export default function ServiceDetailPage() {
   const sideImages = service?.images?.slice(1) || [];
   const hasMoreImages = service?.images && service.images.length > 5;
 
-  // Check existing booking status
+  // Enhanced booking status check
   useEffect(() => {
     const checkBookingStatus = async () => {
       if (!isSignedIn || !currentUser || !urlServiceId) {
@@ -140,10 +144,20 @@ export default function ServiceDetailPage() {
               status: data.booking.status,
               requestId: data.booking._id
             });
+            
+            // Set payment-related states
+            if (data.booking.status === 'accepted') {
+              setAcceptedMessageId(data.booking._id);
+              setCanMakePayment(data.booking.canMakePayment || false);
+            }
           }
+        } else {
+          const errorData = await response.json();
+          console.error('Error fetching booking status:', errorData);
         }
       } catch (error) {
         console.error('Error checking booking status:', error);
+        toast.error('Failed to check booking status');
       } finally {
         setCheckingStatus(false);
       }
@@ -283,6 +297,31 @@ export default function ServiceDetailPage() {
     }));
   };
 
+  // Enhanced Pay Now handler
+  const handlePayNow = async () => {
+    if (!acceptedMessageId || !currentUser || !canMakePayment) {
+      toast.error('Unable to process payment. Please try again.');
+      return;
+    }
+
+    try {
+      console.log('Initiating payment for message:', acceptedMessageId);
+      
+      await initiatePayment(
+        acceptedMessageId, 
+        {
+          name: currentUser.fullName || 'Customer',
+          email: currentUser.primaryEmailAddress?.emailAddress || '',
+          phone: currentUser.primaryPhoneNumber?.phoneNumber || ''
+        },
+        service?.name
+      );
+    } catch (error) {
+      console.error('Payment initiation error:', error);
+      toast.error('Failed to initiate payment. Please try again.');
+    }
+  };
+
   const handleServiceRequest = async () => {
     if (!isSignedIn || !currentUser || !service) return;
 
@@ -356,6 +395,7 @@ export default function ServiceDetailPage() {
     }
   };
 
+  // Enhanced booking cancellation
   const handleCancelBooking = async () => {
     if (!bookingStatus.requestId) return;
 
@@ -370,8 +410,12 @@ export default function ServiceDetailPage() {
       });
 
       if (response.ok) {
+        const result = await response.json();
         setBookingStatus({ status: 'idle' });
+        setAcceptedMessageId(null);
+        setCanMakePayment(false);
         setIsCancelDialogOpen(false);
+        
         toast.success('Booking cancelled successfully', {
           description: 'Your service request has been cancelled.'
         });
@@ -417,6 +461,7 @@ export default function ServiceDetailPage() {
     }
   }, [urlServiceId]);
 
+  // Enhanced booking button logic
   const getBookingButton = () => {
     if (checkingStatus) {
       return (
@@ -429,20 +474,38 @@ export default function ServiceDetailPage() {
     switch (bookingStatus.status) {
       case 'pending':
         return (
-          <Button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 text-lg" disabled>
-            ⏳ Requested
-          </Button>
+          <div className="space-y-3">
+            <Button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 text-lg" disabled>
+              ⏳ Request Pending
+            </Button>
+            <p className="text-sm text-yellow-600 text-center">
+              Waiting for vendor approval
+            </p>
+          </div>
         );
+      
       case 'accepted':
         return (
           <div className="space-y-3">
-            <Button className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 text-lg">
-              Pay Now
+            <Button 
+              className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 text-lg"
+              onClick={handlePayNow}
+              disabled={paymentLoading || !canMakePayment}
+            >
+              {paymentLoading ? 'Processing...' : `Pay Now - ₹${totalPrice}`}
             </Button>
+            
+            {!canMakePayment && (
+              <p className="text-sm text-orange-600 text-center">
+                Payment already processed or not available
+              </p>
+            )}
+            
             <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
               <DialogTrigger asChild>
                 <Button 
-                  className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 text-lg"
+                  variant="outline"
+                  className="w-full border-red-500 text-red-500 hover:bg-red-50 font-semibold py-3 text-lg"
                 >
                   Cancel Booking
                 </Button>
@@ -474,6 +537,7 @@ export default function ServiceDetailPage() {
             </Dialog>
           </div>
         );
+      
       case 'rejected':
       case 'cancelled':
       case 'idle':
@@ -482,7 +546,7 @@ export default function ServiceDetailPage() {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="w-full bg-pink-500 hover:bg-pink-600 text-white font-semibold py-3 text-lg">
-                Request Service
+                Request Service - ₹{totalPrice}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -903,7 +967,7 @@ export default function ServiceDetailPage() {
                     'bg-red-50 text-red-800 border border-red-200'
                   }`}>
                     {bookingStatus.status === 'pending' && 'Your request has been sent and is pending approval.'}
-                    {bookingStatus.status === 'accepted' && 'Your service request has been accepted!'}
+                    {bookingStatus.status === 'accepted' && 'Your service request has been accepted! You can now proceed with payment.'}
                     {bookingStatus.status === 'rejected' && 'Your service request has been declined.'}
                     {bookingStatus.status === 'cancelled' && 'Your booking has been cancelled.'}
                   </div>

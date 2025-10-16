@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-
+ 
 export interface IMessageData extends Document {
   user: {
     id: string;
@@ -46,7 +46,6 @@ export interface IMessageData extends Document {
     }[];
     totalPrice: number;
     bookingDate: Date;
-    bookingTime: string;
     address: {
       houseNo: string;
       areaName: string;
@@ -55,12 +54,17 @@ export interface IMessageData extends Document {
       pin: string;
     };
     specialInstructions?: string;
-    status: 'accepted' | 'not-accepted' | 'pending' | 'cancelled';
+    status: 'accepted' | 'not-accepted' | 'pending';
+  };
+  paymentStatus: {
+    status: 'pending' | 'paid' | 'failed' | 'refunded';
+    paymentId?: Types.ObjectId;
+    paidAt?: Date;
   };
   createdAt: Date;
   updatedAt: Date;
 }
-
+ 
 const MessageDataSchema = new Schema<IMessageData>({
   user: {
     id: { type: String, required: true },
@@ -107,7 +111,6 @@ const MessageDataSchema = new Schema<IMessageData>({
     }],
     totalPrice: { type: Number, required: true },
     bookingDate: { type: Date, required: true },
-    bookingTime: { type: String, required: true },
     address: {
       houseNo: { type: String, required: true },
       areaName: { type: String, required: true },
@@ -118,20 +121,29 @@ const MessageDataSchema = new Schema<IMessageData>({
     specialInstructions: { type: String },
     status: {
       type: String,
-      enum: ['accepted', 'not-accepted', 'pending', 'cancelled'],
+      enum: ['accepted', 'not-accepted', 'pending'],
       default: 'pending'
     }
+  },
+  paymentStatus: {
+    status: {
+      type: String,
+      enum: ['pending', 'paid', 'failed', 'refunded'],
+      default: 'pending'
+    },
+    paymentId: { type: Schema.Types.ObjectId, ref: 'Payment' },
+    paidAt: { type: Date }
   }
-}, { 
-  timestamps: true 
+}, {
+  timestamps: true
 });
-
+ 
 // Index for better query performance
 MessageDataSchema.index({ 'user.id': 1, createdAt: -1 });
 MessageDataSchema.index({ 'vendor.id': 1, createdAt: -1 });
-MessageDataSchema.index({ 'listing.id': 1 });
 MessageDataSchema.index({ 'bookingDetails.status': 1 });
-
+MessageDataSchema.index({ 'paymentStatus.status': 1 });
+ 
 const MessageData = mongoose.models.MessageData || mongoose.model<IMessageData>('MessageData', MessageDataSchema);
-
+ 
 export default MessageData;
