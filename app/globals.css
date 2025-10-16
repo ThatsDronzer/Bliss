@@ -80,43 +80,43 @@ body {
   }
 
   .dashboard-card-header {
-    @apply border-b border-pink-100 pb-6;
+    @apply border-b border-pink-100 pb-4 sm:pb-6;
   }
 
   .dashboard-card-title {
-    @apply text-xl font-semibold text-gray-900;
+    @apply text-lg sm:text-xl font-semibold text-gray-900;
   }
 
   .dashboard-card-description {
-    @apply text-sm text-gray-500;
+    @apply text-xs sm:text-sm text-gray-500;
   }
 
   .dashboard-card-content {
-    @apply pt-6;
+    @apply pt-4 sm:pt-6;
   }
 
   .dashboard-stats {
-    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8;
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8;
   }
 
   .dashboard-stat-card {
-    @apply bg-white shadow-md hover:shadow-lg transition-shadow rounded-lg p-6 border border-pink-100;
+    @apply bg-white shadow-md hover:shadow-lg transition-shadow rounded-lg p-4 sm:p-6 border border-pink-100;
   }
 
   .dashboard-icon-container {
-    @apply w-12 h-12 rounded-full bg-gradient-to-r from-pink-100 to-purple-100 flex items-center justify-center;
+    @apply w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-pink-100 to-purple-100 flex items-center justify-center flex-shrink-0;
   }
 
   .dashboard-icon {
-    @apply w-6 h-6 text-pink-600;
+    @apply w-5 h-5 sm:w-6 sm:h-6 text-pink-600;
   }
 
   .dashboard-button {
-    @apply bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all;
+    @apply bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all text-sm sm:text-base;
   }
 
   .dashboard-button-outline {
-    @apply border-pink-200 text-pink-600 hover:bg-pink-50;
+    @apply border-pink-200 text-pink-600 hover:bg-pink-50 text-sm sm:text-base;
   }
 
   .dashboard-progress {
@@ -128,14 +128,14 @@ body {
   }
 
   .dashboard-badge {
-    @apply text-pink-600 border-pink-200 bg-pink-50;
+    @apply text-pink-600 border-pink-200 bg-pink-50 text-xs;
   }
 
   .dashboard-badge-success {
-    @apply text-green-600 border-green-200 bg-green-50;
+    @apply text-green-600 border-green-200 bg-green-50 text-xs;
   }
 
   .dashboard-badge-warning {
-    @apply text-yellow-600 border-yellow-200 bg-yellow-50;
+    @apply text-yellow-600 border-yellow-200 bg-yellow-50 text-xs;
   }
 }

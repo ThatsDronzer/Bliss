@@ -32,7 +32,7 @@ export default function AdminDashboardLayout({
     <div className="flex flex-col min-h-screen">
       <div className="flex flex-1">
         <AdminDashboardSidebar />
-        <main className="flex-1 p-6 bg-gray-50 ml-64">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 bg-gray-50 w-full md:ml-64">{children}</main>
       </div>
     </div>
   )

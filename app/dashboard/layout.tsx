@@ -32,7 +32,7 @@ export default function DashboardLayout({
   return (
     <div className="flex">
       <DashboardSidebar />
-      <main className="flex-1 min-h-[calc(100vh-73px)]">{children}</main>
+      <main className="flex-1 min-h-[calc(100vh-73px)] w-full md:w-auto">{children}</main>
       <Toaster />
     </div>
   )

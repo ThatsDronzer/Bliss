@@ -31,7 +31,7 @@ export default function VendorDashboardLayout({
   return (
     <div className="flex">
       <VendorDashboardSidebar />
-      <main className="flex-1 min-h-[calc(100vh-73px)]">{children}</main>
+      <main className="flex-1 min-h-[calc(100vh-73px)] w-full md:w-auto">{children}</main>
     </div>
   )
 }

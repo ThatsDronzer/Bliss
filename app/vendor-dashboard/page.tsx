@@ -102,15 +102,15 @@ export default function VendorDashboardPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Vendor Dashboard</h1>
-        <p className="text-gray-600">Welcome back, {vendorData.name}</p>
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2">Vendor Dashboard</h1>
+        <p className="text-sm sm:text-base text-gray-600">Welcome back, {vendorData.name}</p>
         </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <StatsCard
           title="Total Bookings"
           value={analytics.totalBookings}
@@ -142,30 +142,30 @@ export default function VendorDashboardPage() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
         {/* Recent Bookings */}
         <div className="lg:col-span-2">
           <Card>
           <CardHeader>
-              <CardTitle>Recent Bookings</CardTitle>
-              <CardDescription>Your latest booking requests and confirmations</CardDescription>
+              <CardTitle className="text-lg sm:text-xl">Recent Bookings</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Your latest booking requests and confirmations</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
                 {analytics.recentBookings.map((booking) => (
-                  <div key={booking.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                  <div key={booking.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 border rounded-lg">
+                    <div className="flex items-center space-x-3 sm:space-x-4">
+                      <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
                         <Users className="h-5 w-5 text-pink-600" />
                     </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{booking.clientName}</p>
-                        <p className="text-sm text-gray-500">{booking.service}</p>
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm sm:text-base text-gray-900 truncate">{booking.clientName}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 truncate">{booking.service}</p>
                         <p className="text-xs text-gray-400">{booking.date}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium text-gray-900">₹{booking.amount.toLocaleString()}</p>
+                    <div className="flex items-center justify-between sm:flex-col sm:text-right gap-2 pl-13 sm:pl-0">
+                      <p className="font-medium text-sm sm:text-base text-gray-900">₹{booking.amount.toLocaleString()}</p>
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                         booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -177,7 +177,7 @@ export default function VendorDashboardPage() {
                   </div>
                 ))}
               </div>
-              <Button variant="outline" className="w-full mt-4">
+              <Button variant="outline" className="w-full mt-3 sm:mt-4">
                 View All Bookings
               </Button>
             </CardContent>
@@ -185,22 +185,22 @@ export default function VendorDashboardPage() {
         </div>
 
         {/* Quick Actions & Profile */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Profile Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Profile Overview</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">Profile Overview</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center">
+              <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-3 sm:space-y-0 sm:space-x-4 mb-4">
+                <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <span className="text-2xl font-bold text-pink-600">
                     {vendorData.name.charAt(0)}
                   </span>
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">{vendorData.name}</h3>
-                  <p className="text-sm text-gray-500">{vendorData.category}</p>
+                <div className="text-center sm:text-left">
+                  <h3 className="font-medium text-sm sm:text-base text-gray-900">{vendorData.name}</h3>
+                  <p className="text-xs sm:text-sm text-gray-500">{vendorData.category}</p>
                   <p className="text-xs text-gray-400">{vendorData.location}</p>
                 </div>
               </div>
@@ -224,22 +224,22 @@ export default function VendorDashboardPage() {
           {/* Quick Actions */}
           <Card>
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">Quick Actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start" variant="outline">
+            <CardContent className="space-y-2 sm:space-y-3">
+              <Button className="w-full justify-start text-sm sm:text-base h-10 sm:h-auto" variant="outline">
                 <BookMarked className="mr-2 h-4 w-4" />
                 View Bookings
               </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button className="w-full justify-start text-sm sm:text-base h-10 sm:h-auto" variant="outline">
                 <MessageSquare className="mr-2 h-4 w-4" />
                 Check Messages
               </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button className="w-full justify-start text-sm sm:text-base h-10 sm:h-auto" variant="outline">
                 <Star className="mr-2 h-4 w-4" />
                 View Reviews
               </Button>
-              <Button className="w-full justify-start" variant="outline">
+              <Button className="w-full justify-start text-sm sm:text-base h-10 sm:h-auto" variant="outline">
                 <BarChart className="mr-2 h-4 w-4" />
                 Analytics
               </Button>
@@ -249,28 +249,28 @@ export default function VendorDashboardPage() {
           {/* Performance Metrics */}
         <Card>
           <CardHeader>
-              <CardTitle>Performance</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Booking Completion</span>
-                    <span>{analytics.bookingCompletionRate}%</span>
+                  <div className="flex justify-between text-xs sm:text-sm mb-1">
+                    <span className="truncate">Booking Completion</span>
+                    <span className="ml-2 flex-shrink-0">{analytics.bookingCompletionRate}%</span>
                   </div>
                   <Progress value={analytics.bookingCompletionRate} className="h-2" />
                 </div>
                 <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Response Time</span>
-                    <span>{analytics.avgResponseTime}h</span>
+                  <div className="flex justify-between text-xs sm:text-sm mb-1">
+                    <span className="truncate">Response Time</span>
+                    <span className="ml-2 flex-shrink-0">{analytics.avgResponseTime}h</span>
               </div>
                   <Progress value={100 - (analytics.avgResponseTime / 24) * 100} className="h-2" />
                       </div>
                       <div>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span>Customer Satisfaction</span>
-                    <span>{analytics.customerSatisfaction}%</span>
+                  <div className="flex justify-between text-xs sm:text-sm mb-1">
+                    <span className="truncate">Customer Satisfaction</span>
+                    <span className="ml-2 flex-shrink-0">{analytics.customerSatisfaction}%</span>
                   </div>
                   <Progress value={analytics.customerSatisfaction} className="h-2" />
                 </div>

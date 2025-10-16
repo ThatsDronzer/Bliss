@@ -3,8 +3,9 @@ import "./globals.css"
 import { Inter } from "next/font/google"
 import { ChatLayout } from "@/components/layouts/chat-layout"
 import { Header } from "@/components/header"
+import { MobileBottomNav } from "@/components/mobile-bottom-nav"
 import { Toaster } from "@/components/ui/sonner"
-import { ClerkProvider } from '@clerk/nextjs'
+import { ClerkProvider, SignedIn } from '@clerk/nextjs'
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,7 +25,12 @@ export default function RootLayout({
         <body className={inter.className}>
           <ChatLayout>
             <Header />
-            {children}
+            <div className="pb-20 lg:pb-0">
+              {children}
+            </div>
+            <SignedIn>
+              <MobileBottomNav />
+            </SignedIn>
           </ChatLayout>
           <Toaster/>
         </body>

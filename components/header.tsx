@@ -5,12 +5,10 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { LogOut, Menu, ShoppingCart, Search, User, Trash2, AlertTriangle } from "lucide-react"
+import { LogOut, ShoppingCart, Search, User, Trash2, AlertTriangle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
 import { CoinDisplay } from "@/components/ui/coin-display"
 import { CoinService } from "@/lib/coin-service"
 import { SignedIn, SignedOut, useClerk, useAuth, useUser } from "@clerk/nextjs"
@@ -302,123 +300,6 @@ export function Header() {
 
               </div>
             </SignedOut>
-
-            {/* Mobile Menu */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="lg:hidden hover:bg-pink-50 transition-colors rounded-full"
-                >
-                  <Menu className="h-5 w-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-80 bg-white">
-                <div className="flex flex-col gap-6 mt-8">
-                  {/* Mobile Search */}
-                  <form onSubmit={handleSearch} className="relative">
-                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                      <Search className="h-4 w-4 text-gray-400" />
-                    </div>
-                    <Input
-                      type="text"
-                      placeholder="Search vendors..."
-                      className="w-full pl-10 rounded-full border-pink-200 focus:border-pink-400 focus:ring-pink-200"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </form>
-
-                  {/* Mobile Navigation */}
-                  <nav className="flex flex-col gap-4">
-                    <Link
-                      href="/explore-services"
-                      className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors"
-                    >
-                      Explore Services
-                    </Link>
-                    <Link
-                      href="/home-service"
-                      className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors"
-                    >
-                      Home Services
-                    </Link>
-                    <Link
-                      href="/about"
-                      className="text-sm font-medium text-gray-700 hover:text-pink-600 transition-colors"
-                    >
-                      About Us
-                    </Link>
-                  </nav>
-
-                  {/* Mobile User Actions */}
-                  <SignedIn>
-                    <div className="flex flex-col gap-3">
-                      <Button
-                        variant="ghost"
-                        onClick={() => router.push(getDashboardLink())}
-                        className="justify-start text-gray-700 hover:text-pink-600 hover:bg-pink-50"
-                      >
-                        Dashboard
-                      </Button>
-                      
-                      {/* Only show cart for regular users */}
-                      {userRole === "user" && (
-                        <Button
-                          variant="ghost"
-                          onClick={() => router.push("/cart")}
-                          className="justify-start text-gray-700 hover:text-pink-600 hover:bg-pink-50"
-                        >
-                          Cart ({cartItemsCount})
-                        </Button>
-                      )}
-                      
-                      {/* Only show "Become a Vendor" for regular users */}
-                      {userRole === "user" && (
-                        <Button
-                          variant="ghost"
-                          onClick={handleBecomeVendor}
-                          className="justify-start text-gray-700 hover:text-pink-600 hover:bg-pink-50"
-                        >
-                          Become a Vendor
-                        </Button>
-                      )}
-
-                      {/* Removed Vendor Dashboard button for vendors in mobile */}
-                      
-                      <Button
-                        variant="ghost"
-                        onClick={handleLogout}
-                        className="justify-start text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Sign Out
-                      </Button>
-                    </div>
-                  </SignedIn>
-
-                  <SignedOut>
-                    <div className="flex flex-col gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={handleSignIn}
-                        className="border-pink-200 text-pink-600 hover:bg-pink-50"
-                      >
-                        Sign In
-                      </Button>
-                      <Button
-                        onClick={handleSignUp}
-                        className="bg-pink-600 hover:bg-pink-700 text-white"
-                      >
-                        Sign Up
-                      </Button>
-
-                    </div>
-                  </SignedOut>
-                </div>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
       </div>

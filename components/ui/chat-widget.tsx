@@ -267,7 +267,7 @@ export function ChatWidget() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[9999]">
+    <div className="hidden lg:block fixed bottom-4 right-4 z-[9999]">
       {/* Chat Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
