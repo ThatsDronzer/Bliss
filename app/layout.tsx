@@ -28,9 +28,7 @@ export default function RootLayout({
             <div className="pb-20 lg:pb-0">
               {children}
             </div>
-            <SignedIn>
-              <MobileBottomNav />
-            </SignedIn>
+            <MobileBottomNav />
           </ChatLayout>
           <Toaster/>
         </body>

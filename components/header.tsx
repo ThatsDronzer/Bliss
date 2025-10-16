@@ -42,6 +42,7 @@ export function Header() {
   const { user } = useUser()
   const [searchQuery, setSearchQuery] = useState("")
   const [userCoins, setUserCoins] = useState(0)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const { signOut } = useClerk();
 
   // Demo cart items count
@@ -61,12 +62,14 @@ export function Header() {
   }, [isSignedIn, user])
 
   const handleLogout = async () => {
+    setIsLoggingOut(true)
     try {
       await signOut()
       router.push("/")
     } catch (error) {
       console.error('Failed to sign out:', error)
       toast.error('Failed to sign out')
+      setIsLoggingOut(false)
     }
   }
 
@@ -271,9 +274,9 @@ export function Header() {
                       </div>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout}>
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Sign Out</span>
+                    <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
+                      <LogOut className={`mr-2 h-4 w-4 ${isLoggingOut ? "animate-pulse" : ""}`} />
+                      <span>{isLoggingOut ? "Signing out..." : "Sign Out"}</span>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
