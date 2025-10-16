@@ -8,11 +8,12 @@ import { ReviewCard } from '@/components/vendor/Review-Card2';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'sonner';
 
 interface Review {
   _id: string;
@@ -67,17 +68,20 @@ interface Address {
 interface BookingFormData {
   address: Address;
   bookingDate: string;
-  bookingTime: string; // <-- Added bookingTime
+  bookingTime: string;
   specialInstructions: string;
 }
 
+interface BookingStatus {
+  status: 'idle' | 'pending' | 'accepted' | 'rejected' | 'cancelled';
+  requestId?: string;
+}
+
 export default function ServiceDetailPage() {
-  // Get route params and auth
   const params = useParams();
   const urlServiceId = params.serviceId as string;
   const { isSignedIn, user: currentUser } = useUser();
 
-  // State declarations
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -86,15 +90,16 @@ export default function ServiceDetailPage() {
   const [loadingReviews, setLoadingReviews] = useState(true);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [totalPrice, setTotalPrice] = useState(0);
-  const [bookingStatus, setBookingStatus] = useState<'idle' | 'pending' | 'accepted' | 'rejected'>('idle');
+  const [bookingStatus, setBookingStatus] = useState<BookingStatus>({ status: 'idle' });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(true);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   
-  // Default image constant
   const DEFAULT_IMAGE = '/default-service-placeholder.jpg';  
   const DEFAULT_ITEM_IMAGE = '/default-item-placeholder.jpg';
 
-  // Booking form state (added bookingTime)
   const [bookingForm, setBookingForm] = useState<BookingFormData>({
     address: {
       houseNo: '',
@@ -104,23 +109,49 @@ export default function ServiceDetailPage() {
       pin: ''
     },
     bookingDate: '',
-    bookingTime: '09:00', // Default time
+    bookingTime: '09:00',
     specialInstructions: ''
   });
 
-  // Time slots for the dropdown
   const timeSlots = [
     '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
     '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
     '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00'
   ];
 
-  // Derived state
   const mainImage = service?.images?.[0] || DEFAULT_IMAGE;
   const sideImages = service?.images?.slice(1) || [];
   const hasMoreImages = service?.images && service.images.length > 5;
 
-  // Initialize selected items when service data loads
+  // Check existing booking status
+  useEffect(() => {
+    const checkBookingStatus = async () => {
+      if (!isSignedIn || !currentUser || !urlServiceId) {
+        setCheckingStatus(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/booking-status?serviceId=${urlServiceId}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.booking) {
+            setBookingStatus({
+              status: data.booking.status,
+              requestId: data.booking._id
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error checking booking status:', error);
+      } finally {
+        setCheckingStatus(false);
+      }
+    };
+
+    checkBookingStatus();
+  }, [isSignedIn, currentUser, urlServiceId]);
+
   useEffect(() => {
     if (service) {
       if (service.items && service.items.length > 0) {
@@ -130,18 +161,15 @@ export default function ServiceDetailPage() {
         }));
         setSelectedItems(initialSelectedItems);
         
-        // Calculate initial total price
         const initialTotal = service.items.reduce((sum, item) => sum + item.price, 0);
         setTotalPrice(initialTotal);
       } else {
-        // If no items, use base price
         setTotalPrice(service.price || 0);
         setSelectedItems([]);
       }
     }
   }, [service]);
 
-  // Fetch service details
   useEffect(() => {
     const fetchServiceDetails = async () => {
       try {
@@ -160,7 +188,6 @@ export default function ServiceDetailPage() {
         }
         
         const data = await response.json();
-        console.log('Service data:', data);
         setService(data);
       } catch (err) {
         console.error('Error fetching service:', err);
@@ -175,7 +202,6 @@ export default function ServiceDetailPage() {
     }
   }, [urlServiceId]);
 
-  // Function to fetch reviews
   const fetchReviews = async () => {
     if (!urlServiceId) return;
     
@@ -199,20 +225,17 @@ export default function ServiceDetailPage() {
     }
   };
 
-  // Handle checkbox changes
   const handleItemToggle = (index: number) => {
     const updatedItems = [...selectedItems];
     updatedItems[index].isSelected = !updatedItems[index].isSelected;
     setSelectedItems(updatedItems);
     
-    // Calculate new total price
     const newTotal = updatedItems.reduce((sum, item) => {
       return item.isSelected ? sum + item.price : sum;
     }, 0);
     setTotalPrice(newTotal);
   };
 
-  // Select all items
   const selectAllItems = () => {
     const updatedItems = selectedItems.map(item => ({
       ...item,
@@ -224,7 +247,6 @@ export default function ServiceDetailPage() {
     setTotalPrice(newTotal);
   };
 
-  // Deselect all items
   const deselectAllItems = () => {
     const updatedItems = selectedItems.map(item => ({
       ...item,
@@ -234,7 +256,6 @@ export default function ServiceDetailPage() {
     setTotalPrice(0);
   };
 
-  // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     
@@ -255,7 +276,6 @@ export default function ServiceDetailPage() {
     }
   };
 
-  // Handle time selection change
   const handleTimeChange = (value: string) => {
     setBookingForm(prev => ({
       ...prev,
@@ -263,7 +283,6 @@ export default function ServiceDetailPage() {
     }));
   };
 
-  // Handle service request submission
   const handleServiceRequest = async () => {
     if (!isSignedIn || !currentUser || !service) return;
 
@@ -281,9 +300,11 @@ export default function ServiceDetailPage() {
         totalPrice: totalPrice,
         address: bookingForm.address,
         bookingDate: bookingForm.bookingDate,
-        bookingTime: bookingForm.bookingTime, // <-- Added bookingTime
+        bookingTime: bookingForm.bookingTime,
         specialInstructions: bookingForm.specialInstructions
       };
+
+      console.log('Sending booking request:', requestData);
 
       const response = await fetch('/api/message-create', {
         method: 'POST',
@@ -293,13 +314,17 @@ export default function ServiceDetailPage() {
         body: JSON.stringify(requestData),
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to send service request');
+        console.error('Server response error:', responseData);
+        throw new Error(responseData.message || responseData.details || 'Failed to send service request');
       }
 
-      const result = await response.json();
-      setBookingStatus('pending');
+      setBookingStatus({
+        status: 'pending',
+        requestId: responseData.data._id
+      });
       setIsDialogOpen(false);
       
       // Reset form
@@ -316,16 +341,54 @@ export default function ServiceDetailPage() {
         specialInstructions: ''
       });
 
-      console.log('Service request sent successfully:', result);
+      toast.success('Service request sent successfully!', {
+        description: 'The vendor will review your request shortly.'
+      });
+
+      console.log('Service request sent successfully:', responseData);
     } catch (error) {
       console.error('Error sending service request:', error);
-      alert('Failed to send service request. Please try again.');
+      toast.error('Failed to send service request', {
+        description: error instanceof Error ? error.message : 'Please try again later.'
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Check if form is valid (added bookingTime check)
+  const handleCancelBooking = async () => {
+    if (!bookingStatus.requestId) return;
+
+    setIsCancelling(true);
+    try {
+      const response = await fetch(`/api/booking-status/${bookingStatus.requestId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'cancelled' }),
+      });
+
+      if (response.ok) {
+        setBookingStatus({ status: 'idle' });
+        setIsCancelDialogOpen(false);
+        toast.success('Booking cancelled successfully', {
+          description: 'Your service request has been cancelled.'
+        });
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to cancel booking');
+      }
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      toast.error('Failed to cancel booking', {
+        description: error instanceof Error ? error.message : 'Please try again later.'
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const isFormValid = () => {
     return (
       bookingForm.address.houseNo &&
@@ -338,12 +401,10 @@ export default function ServiceDetailPage() {
     );
   };
 
-  // Initial fetch of reviews and listen for review submissions
   useEffect(() => {
     if (urlServiceId) {
       fetchReviews();
       
-      // Listen for review submissions
       const handleReviewSubmitted = () => {
         fetchReviews();
       };
@@ -356,9 +417,16 @@ export default function ServiceDetailPage() {
     }
   }, [urlServiceId]);
 
-  // Get button text and style based on booking status
   const getBookingButton = () => {
-    switch (bookingStatus) {
+    if (checkingStatus) {
+      return (
+        <Button className="w-full bg-gray-500 text-white font-semibold py-3 text-lg" disabled>
+          Checking Status...
+        </Button>
+      );
+    }
+
+    switch (bookingStatus.status) {
       case 'pending':
         return (
           <Button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 text-lg" disabled>
@@ -367,16 +435,48 @@ export default function ServiceDetailPage() {
         );
       case 'accepted':
         return (
-          <Button className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 text-lg" disabled>
-            ✓ Accepted
-          </Button>
+          <div className="space-y-3">
+            <Button className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 text-lg">
+              Pay Now
+            </Button>
+            <Dialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+              <DialogTrigger asChild>
+                <Button 
+                  className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 text-lg"
+                >
+                  Cancel Booking
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Cancel Booking</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to cancel this booking? This action cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex space-x-2 justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsCancelDialogOpen(false)}
+                    disabled={isCancelling}
+                  >
+                    Keep Booking
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleCancelBooking}
+                    disabled={isCancelling}
+                  >
+                    {isCancelling ? 'Cancelling...' : 'Yes, Cancel Booking'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         );
       case 'rejected':
-        return (
-          <Button className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 text-lg" disabled>
-            ✗ Rejected
-          </Button>
-        );
+      case 'cancelled':
+      case 'idle':
       default:
         return (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -390,7 +490,6 @@ export default function ServiceDetailPage() {
                 <DialogTitle>Request Service</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                {/* Service Summary */}
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <h4 className="font-semibold mb-2">Service Summary</h4>
                   <p className="text-sm text-gray-600">{service?.name}</p>
@@ -407,7 +506,6 @@ export default function ServiceDetailPage() {
                   )}
                 </div>
 
-                {/* Address Details */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="houseNo">House No./Building Name *</Label>
@@ -493,7 +591,6 @@ export default function ServiceDetailPage() {
                   </div>
                 </div>
 
-                {/* Special Instructions */}
                 <div className="space-y-2">
                   <Label htmlFor="specialInstructions">Special Instructions</Label>
                   <Textarea
@@ -506,7 +603,6 @@ export default function ServiceDetailPage() {
                   />
                 </div>
 
-                {/* Booking Summary */}
                 <div className="bg-blue-50 p-4 rounded-lg">
                   <h4 className="font-semibold mb-2">Booking Summary</h4>
                   <div className="text-sm space-y-1">
@@ -516,7 +612,6 @@ export default function ServiceDetailPage() {
                   </div>
                 </div>
 
-                {/* Submit Button */}
                 <Button
                   onClick={handleServiceRequest}
                   disabled={!isFormValid() || isSubmitting}
@@ -573,7 +668,6 @@ export default function ServiceDetailPage() {
     <div className="max-w-6xl mx-auto py-10 px-4">
       <h1 className="text-3xl md:text-4xl font-bold mb-4">{service.name}</h1>
       
-      {/* Vendor and Category Info */}
       <div className="flex flex-wrap gap-3 items-center mb-6">
         <span className="text-gray-600 font-medium">
           by {service.vendor?.name || 'Unknown Vendor'}
@@ -583,7 +677,6 @@ export default function ServiceDetailPage() {
         </span>
       </div>
       
-      {/* Service Rating Summary */}
       {reviews && reviews.length > 0 && (
         <div className="flex items-center gap-2 mb-6">
           <div className="flex">
@@ -614,7 +707,6 @@ export default function ServiceDetailPage() {
       {/* Images Section */}
       <div className="relative mb-8">
         <div className="grid grid-cols-4 gap-2 h-[400px] md:h-[500px]">
-          {/* Main large image */}
           <div className="col-span-2 row-span-2 relative">
             <Image
               src={service.images?.[0] || DEFAULT_IMAGE}
@@ -626,7 +718,6 @@ export default function ServiceDetailPage() {
             />
           </div>
           
-          {/* Top right images */}
           <div className="relative">
             <Image
               src={service.images?.[1] || DEFAULT_IMAGE}
@@ -646,7 +737,6 @@ export default function ServiceDetailPage() {
             />
           </div>
           
-          {/* Bottom right images */}
           <div className="relative">
             <Image
               src={service.images?.[3] || DEFAULT_IMAGE}
@@ -667,7 +757,6 @@ export default function ServiceDetailPage() {
           </div>
         </div>
         
-        {/* Show all photos button */}
         {service.images && service.images.length > 0 && (
           <button
             onClick={() => setShowAllImages(true)}
@@ -782,9 +871,8 @@ export default function ServiceDetailPage() {
           
           {/* Service Items and Booking Section */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            {/* Service Items Checkboxes - Takes 2/3 width on large screens */}
+            {/* Service Items Checkboxes */}
             <div className="lg:col-span-2">
-              {/* Service Items Checkboxes - Only show if items exist */}
               {selectedItems.length > 0 ? (
                 <div className="bg-white p-6 rounded-lg shadow-sm border">
                   <div className="flex justify-between items-center mb-4">
@@ -809,7 +897,6 @@ export default function ServiceDetailPage() {
                     {selectedItems.map((item, index) => (
                       <div key={index} className="flex items-start gap-4 p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                         <div className="flex items-start space-x-4 w-full">
-                          {/* Checkbox */}
                           <input
                             type="checkbox"
                             checked={item.isSelected}
@@ -817,7 +904,6 @@ export default function ServiceDetailPage() {
                             className="mt-1 w-5 h-5 text-pink-500 rounded focus:ring-pink-500 flex-shrink-0"
                           />
                           
-                          {/* Item Image */}
                           <div className="flex-shrink-0">
                             <div className="relative w-20 h-20 rounded-lg overflow-hidden">
                               <Image
@@ -830,7 +916,6 @@ export default function ServiceDetailPage() {
                             </div>
                           </div>
                           
-                          {/* Item Details */}
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-start mb-2">
                               <div>
@@ -842,7 +927,6 @@ export default function ServiceDetailPage() {
                               </span>
                             </div>
                             
-                            {/* Selection Indicator */}
                             <div className={`flex items-center gap-2 mt-2 ${item.isSelected ? 'text-green-600' : 'text-gray-400'}`}>
                               <div className={`w-2 h-2 rounded-full ${item.isSelected ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                               <span className="text-xs font-medium">
@@ -860,7 +944,6 @@ export default function ServiceDetailPage() {
                   </p>
                 </div>
               ) : (
-                // Show base price if no items are available
                 <div className="bg-white p-6 rounded-lg shadow-sm border">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl text-black-600 font-bold">Service Price</h3>
@@ -870,7 +953,7 @@ export default function ServiceDetailPage() {
               )}
             </div>
 
-            {/* Booking Section - Takes 1/3 width on large screens */}
+            {/* Booking Section */}
             <div className="lg:col-span-1">
               <div className="bg-white p-6 rounded-lg shadow-md h-fit lg:sticky lg:top-24">
                 <div className="flex justify-between items-start mb-4">
@@ -903,16 +986,17 @@ export default function ServiceDetailPage() {
                   <p>✓ Best price guarantee</p>
                 </div>
 
-                {/* Booking Status Info */}
-                {bookingStatus !== 'idle' && (
+                {bookingStatus.status !== 'idle' && (
                   <div className={`mt-4 p-3 rounded-lg text-sm ${
-                    bookingStatus === 'pending' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
-                    bookingStatus === 'accepted' ? 'bg-green-50 text-green-800 border border-green-200' :
+                    bookingStatus.status === 'pending' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' :
+                    bookingStatus.status === 'accepted' ? 'bg-green-50 text-green-800 border border-green-200' :
+                    bookingStatus.status === 'cancelled' ? 'bg-gray-50 text-gray-800 border border-gray-200' :
                     'bg-red-50 text-red-800 border border-red-200'
                   }`}>
-                    {bookingStatus === 'pending' && 'Your request has been sent and is pending approval.'}
-                    {bookingStatus === 'accepted' && 'Your service request has been accepted!'}
-                    {bookingStatus === 'rejected' && 'Your service request has been declined.'}
+                    {bookingStatus.status === 'pending' && 'Your request has been sent and is pending approval.'}
+                    {bookingStatus.status === 'accepted' && 'Your service request has been accepted!'}
+                    {bookingStatus.status === 'rejected' && 'Your service request has been declined.'}
+                    {bookingStatus.status === 'cancelled' && 'Your booking has been cancelled.'}
                   </div>
                 )}
               </div>
