@@ -46,7 +46,6 @@ const navItems = [
     title: "Messages",
     href: "/vendor-dashboard/messages",
     icon: <MessageSquare className="w-5 h-5" />,
-    badge: 2,
   },
   {
     title: "Reviews",
@@ -72,6 +71,7 @@ export function VendorDashboardSidebar() {
   const { user } = useUser()
   const [isVerified, setIsVerified] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [messageCount, setMessageCount] = useState(0)
 
   // Check verification status
   useEffect(() => {
@@ -90,6 +90,32 @@ export function VendorDashboardSidebar() {
     }
 
     checkVerificationStatus()
+  }, [user?.id])
+
+  // Fetch message count
+  useEffect(() => {
+    const fetchMessageCount = async () => {
+      try {
+        const response = await fetch('/api/vendor/booking-requests?page=1&limit=1000') // Get all to count
+        const data = await response.json()
+        if (response.ok && Array.isArray(data.messages)) {
+          // Count only pending messages for the badge
+          const pendingCount = data.messages.filter((msg: any) => 
+            msg.bookingDetails?.status === 'pending'
+          ).length
+          setMessageCount(pendingCount)
+        }
+      } catch (error) {
+        console.error('Error fetching message count:', error)
+      }
+    }
+
+    if (user?.id) {
+      fetchMessageCount()
+      // Optionally refresh count every 30 seconds
+      const interval = setInterval(fetchMessageCount, 30000)
+      return () => clearInterval(interval)
+    }
   }, [user?.id])
 
   // Close mobile menu on route change
@@ -155,9 +181,9 @@ export function VendorDashboardSidebar() {
                 >
                   {item.icon}
                   <span className="ml-2">{item.title}</span>
-                  {item.badge && (
+                  {item.href === "/vendor-dashboard/messages" && messageCount > 0 && (
                     <span className="ml-auto bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                      {item.badge}
+                      {messageCount}
                     </span>
                   )}
                 </Button>
