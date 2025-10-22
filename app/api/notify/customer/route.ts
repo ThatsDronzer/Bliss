@@ -58,12 +58,10 @@ export async function POST(req: Request) {
 
     //ensuring the number from India Continent
     phone = digits.startsWith("+91") ? digits : `+91${digits}`;
-    console.log({phone})
 
-    const requestId = new ObjectId().toHexString();
     const message = templates.vendorNotify({
       customerName: customer.name ?? "a customer",
-      requestId,
+      vendorName: vendor.ownerName ?? "Vendor",
     });
 
     await sendWhatsApp(phone, message);
