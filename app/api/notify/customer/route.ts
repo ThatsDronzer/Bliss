@@ -11,15 +11,17 @@ export async function POST(req: Request) {
     await connectDB();
 
     const body = await req.json();
-    const { customerId, vendorId, service } = body ?? {};
+    const { customerClerkId, vendorId, service } = body ?? {};
 
     // checking the fields are coming or not
-    if (!customerId || !vendorId || !service) {
+    if (!customerClerkId || !vendorId || !service) {
       return NextResponse.json(
         { message: "Missing required fields" },
         { status: 400 }
       );
     }
+
+    const customerId = await User.findOne({ clerkId: customerClerkId });
 
     // check the id string is valid or not
     if (!ObjectId.isValid(customerId) || !ObjectId.isValid(vendorId)) {
@@ -62,6 +64,7 @@ export async function POST(req: Request) {
     const message = templates.vendorNotify({
       customerName: customer.name ?? "a customer",
       vendorName: vendor.ownerName ?? "Vendor",
+      serviceName: service ?? " ",
     });
 
     await sendWhatsApp(phone, message);
