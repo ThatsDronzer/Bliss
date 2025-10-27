@@ -328,7 +328,7 @@ export default function ServiceDetailPage() {
       setIsDialogOpen(false);
       
       try {
-      const notifyResponse = await fetch('/api/notify/customer', {
+      const notifyResponse = await fetch('/api/notify/vendor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
