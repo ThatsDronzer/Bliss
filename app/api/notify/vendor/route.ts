@@ -48,6 +48,8 @@ export async function POST(req: Request) {
     }
 
     let phone = vendor.service_phone;
+    let adminPhone = process.env.ADMIN_WHATSAPP_NUMBER;
+
     if (!phone) {
       return NextResponse.json(
         { message: "Vendor has no WhatsApp number" },
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
     }
 
     phone = String(phone).trim();
+    adminPhone = String(adminPhone).trim();
     const digits = phone.replace(/[^\d+]/g, "");
 
     //ensuring the number from India Continent
@@ -68,6 +71,7 @@ export async function POST(req: Request) {
     });
 
     await sendWhatsApp(phone, message);
+    await sendWhatsApp(adminPhone, message);
 
     return NextResponse.json(
       { success: true, message: "Vendor notified via WhatsApp!" },
