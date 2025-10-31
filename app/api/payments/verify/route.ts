@@ -3,23 +3,24 @@ import mongoose from 'mongoose';
 import { verifyPaymentSignature, getPaymentDetails } from '@/lib/razorpay';
 import Payment from '@/model/payment';
 import MessageData from '@/model/message';
- 
+import AdminPayment from '@/model/AdminPayments';
+
 export async function POST(request: NextRequest) {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = await request.json();
- 
+
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return NextResponse.json(
         { error: 'Missing payment details' },
         { status: 400 }
       );
     }
- 
+
     // Connect to database
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(process.env.MONGODB_URI!);
     }
- 
+
     // Find payment by razorpay order ID
     const payment = await Payment.findOne({ 'razorpay.orderId': razorpay_order_id });
     if (!payment) {
@@ -28,30 +29,30 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
- 
+
     // Verify payment signature
     const isSignatureValid = verifyPaymentSignature(
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature
     );
- 
+
     if (!isSignatureValid) {
       // Update payment status to failed
       await Payment.findByIdAndUpdate(payment._id, {
         status: 'failed',
       });
- 
+
       await MessageData.findByIdAndUpdate(payment.message, {
         'paymentStatus.status': 'failed',
       });
- 
+
       return NextResponse.json(
         { error: 'Payment verification failed' },
         { status: 400 }
       );
     }
- 
+
     // Double-check payment status with Razorpay API
     const paymentDetails = await getPaymentDetails(razorpay_payment_id);
     
@@ -61,25 +62,36 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
- 
+
     // If webhook hasn't processed this yet, update manually
     if (payment.status !== 'captured') {
       payment.status = 'captured';
       payment.razorpay.paymentId = razorpay_payment_id;
       payment.razorpay.signature = razorpay_signature;
-      payment.payout.advancePaid = true;
-      payment.payout.advancePaidAt = new Date();
-      payment.payout.payoutStatus = 'advance_paid';
+      payment.payout.advancePaid = false; // Set to false since payout status is 'none'
+      payment.payout.advancePaidAt = undefined; // Remove advance paid date
+      payment.payout.payoutStatus = 'none'; // Changed from 'advance_paid' to 'none'
       
       await payment.save();
- 
+
       await MessageData.findByIdAndUpdate(payment.message, {
         'paymentStatus.status': 'paid',
         'paymentStatus.paymentId': payment._id,
         'paymentStatus.paidAt': new Date(),
       });
+
+      // ✅ ADD TO ADMIN PAYMENTS - Only successful payments
+      try {
+        const adminPayment = new AdminPayment({
+          paymentId: payment._id
+        });
+        await adminPayment.save();
+        console.log('✅ Payment added to admin records:', payment._id);
+      } catch (error) {
+        console.error('❌ Error adding to admin payments:', error);
+      }
     }
- 
+
     return NextResponse.json({
       success: true,
       message: 'Payment verified successfully',
