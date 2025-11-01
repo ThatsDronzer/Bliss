@@ -26,14 +26,30 @@ if (!MONGODB_URI) {
 let isConnected = false;
 
 const connectDB = async () => {
-  if (isConnected) return;
+  // Check if already connected
+  if (mongoose.connection.readyState === 1) {
+    isConnected = true;
+    return;
+  }
+
+  // If connecting, wait for it
+  if (mongoose.connection.readyState === 2) {
+    while (mongoose.connection.readyState === 2) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    isConnected = mongoose.connection.readyState === 1;
+    return;
+  }
 
   try {
-    const db = await mongoose.connect(MONGODB_URI);
+    await mongoose.connect(MONGODB_URI, {
+      bufferCommands: false, // Disable mongoose buffering
+    });
     isConnected = true;
     console.log('✅ MongoDB connected');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
+    isConnected = false;
     throw error;
   }
 };

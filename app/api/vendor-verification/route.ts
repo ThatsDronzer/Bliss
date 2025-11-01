@@ -5,13 +5,15 @@ import connectDB from '@/lib/config/db'; // your MongoDB connection util
 
 export async function GET(req: NextRequest) {
   try {
-    await connectDB();
     const { searchParams } = new URL(req.url);
     const clerkId = searchParams.get('clerkId');
 
     if (!clerkId) {
       return NextResponse.json({ error: 'clerkId is required' }, { status: 400 });
     }
+
+    // Connect to database (same pattern as your other routes)
+    await connectDB();
 
     const vendor = await Vendor.findOne({ clerkId });
     
@@ -35,7 +37,6 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await connectDB(); // connect to DB
     const body = await req.json();
     const {
       clerkId,
@@ -67,6 +68,9 @@ export async function POST(req: NextRequest) {
     if (!clerkId) {
       return NextResponse.json({ error: 'clerkId is required' }, { status: 400 });
     }
+
+    // Connect to database
+    await connectDB();
 
     // Check if vendor exists
     let vendor = await Vendor.findOne({ clerkId });

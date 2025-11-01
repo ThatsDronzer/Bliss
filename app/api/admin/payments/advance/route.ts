@@ -49,8 +49,16 @@ export async function POST(request: NextRequest) {
 
     // Get message details for booking
     const message = await MessageData.findById(payment.message);
+    console.log('📝 Message booking details:', message?.bookingDetails);
 
-    // Create booking record
+    if (!message) {
+      return NextResponse.json(
+        { error: 'Message not found' },
+        { status: 404 }
+      );
+    }
+
+    // Create booking record with proper validation
     const booking = new Booking({
       payment: payment._id,
       message: payment.message,
@@ -73,15 +81,14 @@ export async function POST(request: NextRequest) {
         price: payment.listing.price
       },
       bookingDetails: {
-        //@ts-ignore
-        selectedItems: message.bookingDetails.selectedItems.map((item) => ({
+        selectedItems: message.bookingDetails?.selectedItems?.map((item: any) => ({
           name: item.name,
           price: item.price
-        })),
-        totalPrice: message.bookingDetails.totalPrice,
-        bookingDate: message.bookingDetails.bookingDate,
-        bookingTime: message.bookingDetails.bookingTime,
-        address: message.bookingDetails.address
+        })) || [],
+        totalPrice: message.bookingDetails?.totalPrice || 0,
+        bookingDate: message.bookingDetails?.bookingDate || new Date(),
+        bookingTime: message.bookingDetails?.bookingTime || '10:00',
+        address: message.bookingDetails?.address || 'Address not provided'
       },
       paymentStatus: {
         advancePaid: true,
