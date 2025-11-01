@@ -46,6 +46,7 @@ export interface IMessageData extends Document {
     }[];
     totalPrice: number;
     bookingDate: Date;
+    bookingTime?: string;
     address: {
       houseNo: string;
       areaName: string;
@@ -111,6 +112,7 @@ const MessageDataSchema = new Schema<IMessageData>({
     }],
     totalPrice: { type: Number, required: true },
     bookingDate: { type: Date, required: true },
+    bookingTime: { type: String },
     address: {
       houseNo: { type: String, required: true },
       areaName: { type: String, required: true },

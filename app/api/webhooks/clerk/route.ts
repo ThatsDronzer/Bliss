@@ -27,11 +27,17 @@ export async function POST(req: Request) {
   const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET!);
   let evt: ClerkEvent;
   try {
-    evt = wh.verify(JSON.stringify(payload), {
-      "svix-id": (await headersList).get("svix-id")!,
-      "svix-timestamp": (await headersList).get("svix-timestamp")!,
-      "svix-signature": (await headersList).get("svix-signature")!,
-    }) as ClerkEvent;
+    // For development, you can temporarily skip verification
+    if (process.env.NODE_ENV === 'development') {
+      evt = payload as ClerkEvent;
+      console.log("⚠️ Development mode: Skipping webhook signature verification");
+    } else {
+      evt = wh.verify(JSON.stringify(payload), {
+        "svix-id": (await headersList).get("svix-id")!,
+        "svix-timestamp": (await headersList).get("svix-timestamp")!,
+        "svix-signature": (await headersList).get("svix-signature")!,
+      }) as ClerkEvent;
+    }
   } catch (err) {
     console.error("Webhook signature verification failed:", err);
     return new NextResponse("Invalid webhook", { status: 400 });
