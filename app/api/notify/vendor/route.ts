@@ -1,44 +1,86 @@
 import { NextResponse } from "next/server";
-import twilio from "twilio";
+import { ObjectId } from "mongodb";
+import connectDB from "@/lib/mongodb";
+import { sendWhatsApp } from "@/lib/twilio";
 import { templates } from "@/lib/messageTemplate";
+import User from "@/model/user";
+import Vendor from "@/model/vendor";
 
-// Initialize Twilio client using env vars
-const client = twilio(
-  process.env.TWILIO_ACCOUNT_SID!,
-  process.env.TWILIO_AUTH_TOKEN!
-);
-
-
-export async function POST(request: Request) {
-  console.log("SID:", process.env.TWILIO_ACCOUNT_SID);
-  console.log("TOKEN:", process.env.TWILIO_AUTH_TOKEN);
-  console.log("NUMBER:", process.env.TWILIO_WHATSAPP_NUMBER);
-
+export async function POST(req: Request) {
   try {
-    const { customerName, requestId } = await request.json();
+    await connectDB();
 
-    if (!customerName || !requestId) {
+    const body = await req.json();
+    const { customerClerkId, vendorId, service } = body ?? {};
+
+    // checking the fields are coming or not
+    if (!customerClerkId || !vendorId || !service) {
       return NextResponse.json(
-        { success: false, error: "Missing required fields" },
+        { message: "Missing required fields" },
         { status: 400 }
       );
     }
 
-    // Create message text using your template
-    const messageBody = templates.vendorNotify({ customerName, requestId });
+    const customerId = await User.findOne({ clerkId: customerClerkId });
 
-    // Send WhatsApp message via Twilio
-    const message = await client.messages.create({
-      from: process.env.TWILIO_WHATSAPP_NUMBER,
-      to: process.env.VENDOR_WHATSAPP_NUMBER!,
-      body: messageBody,
+    // check the id string is valid or not
+    if (!ObjectId.isValid(customerId) || !ObjectId.isValid(vendorId)) {
+      return NextResponse.json(
+        { message: "Invalid customerId or vendorId" },
+        { status: 400 }
+      );
+    }
+
+    // find the customer {name, email} and vendor {ownerName, service_phone} from db
+    const customer = await User.findById(customerId)
+      .select("name email")
+      .lean();
+
+    const vendor = await Vendor.findById(vendorId)
+      .select("ownerName service_phone")
+      .lean();
+
+    if (!customer || !vendor) {
+      return NextResponse.json(
+        { message: "Customer or vendor not found" },
+        { status: 404 }
+      );
+    }
+
+    let phone = vendor.service_phone;
+    let adminPhone = process.env.ADMIN_WHATSAPP_NUMBER;
+
+    if (!phone) {
+      return NextResponse.json(
+        { message: "Vendor has no WhatsApp number" },
+        { status: 400 }
+      );
+    }
+
+    phone = String(phone).trim();
+    adminPhone = String(adminPhone).trim();
+    const digits = phone.replace(/[^\d+]/g, "");
+
+    //ensuring the number from India Continent
+    phone = digits.startsWith("+91") ? digits : `+91${digits}`;
+
+    const message = templates.vendorNotify({
+      customerName: customer.name ?? "a customer",
+      vendorName: vendor.ownerName ?? "Vendor",
+      serviceName: service ?? " ",
     });
 
-    return NextResponse.json({ success: true, sid: message.sid });
-  } catch (error: any) {
-    console.error("Error sending WhatsApp message:", error);
+    await sendWhatsApp(phone, message);
+    await sendWhatsApp(adminPhone, message);
+
     return NextResponse.json(
-      { success: false, error: error.message },
+      { success: true, message: "Vendor notified via WhatsApp!" },
+      { status: 200 }
+    );
+  } catch (err) {
+    console.error("notify/customer error:", err);
+    return NextResponse.json(
+      { message: "Something went wrong" },
       { status: 500 }
     );
   }
