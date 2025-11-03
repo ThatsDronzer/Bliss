@@ -5,7 +5,7 @@ import dbConnect from '@/lib/dbConnect'
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ requestId: string }> }
+  { params }: { params: { requestId: string } }
 ) {
   try {
     const { userId } = getAuth(request)
@@ -14,11 +14,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Await params in Next.js 15
-    const { requestId } = await params;
-
     const { status } = await request.json();
-    console.log('Updating status for request:', requestId, 'to:', status);
+    console.log('Updating status for request:', params.requestId, 'to:', status);
     
     if (!status || !['accepted', 'not-accepted'].includes(status)) {
       console.log('Invalid status:', status);
@@ -29,13 +26,13 @@ export async function PATCH(
     console.log('Connected to database');
 
     console.log('Updating message with query:', {
-      _id: requestId,
+      _id: params.requestId,
       'vendor.id': userId
     });
     
     const updatedMessage = await MessageData.findOneAndUpdate(
       {
-        _id: requestId,
+        _id: params.requestId,
         'vendor.id': userId,
         'bookingDetails.status': 'pending' // Only allow updates for pending requests
       },
@@ -46,64 +43,13 @@ export async function PATCH(
     )
 
     if (!updatedMessage) {
-      console.log('No message found with ID:', requestId);
+      console.log('No message found with ID:', params.requestId);
       return NextResponse.json({ error: 'Booking request not found or cannot be updated' }, { status: 404 })
     }
 
+    console.log('Successfully updated message:', updatedMessage._id);
+
     const msg = updatedMessage as any;
-    console.log('Successfully updated message:', msg._id);
-
-    // Send WhatsApp notification to customer
-    try {
-      // Use localhost for internal API calls to avoid ngrok bot protection
-      const baseUrl = 'http://localhost:3000';
-      
-      // Ensure phone number is in E.164 format (+91...)
-      let customerPhone = msg.user.phone;
-      if (customerPhone && !customerPhone.startsWith('+')) {
-        customerPhone = `+91${customerPhone}`;
-      }
-      
-      console.log('Sending notification to:', baseUrl + '/api/notify/customer');
-      console.log('Notification data:', {
-        requestId,
-        customerPhone,
-        vendorName: msg.vendor.name,
-        status,
-      });
-      
-      const notificationResponse = await fetch(`${baseUrl}/api/notify/customer`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          requestId: requestId,
-          customerPhone: customerPhone,
-          vendorName: msg.vendor.name,
-          status: status,
-          customerName: msg.user.name,
-        }),
-      });
-
-      // Check if response is JSON before parsing
-      const contentType = notificationResponse.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        const notificationResult = await notificationResponse.json();
-        
-        if (!notificationResponse.ok) {
-          console.error('Failed to send customer notification:', notificationResult);
-        } else {
-          console.log('Customer notification sent successfully:', notificationResult);
-        }
-      } else {
-        const textResponse = await notificationResponse.text();
-        console.error('Notification API returned non-JSON response:', textResponse.substring(0, 200));
-      }
-    } catch (notificationError) {
-      console.error('Error sending customer notification:', notificationError);
-      // Don't fail the status update if notification fails
-    }
     
     const transformedMessage = {
       id: msg._id.toString(),

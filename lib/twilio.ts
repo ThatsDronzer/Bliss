@@ -1,23 +1,14 @@
 import twilio from "twilio";
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const fromWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER;
+const accountSid = process.env.TWILIO_ACCOUNT_SID!;
+const authToken = process.env.TWILIO_AUTH_TOKEN!;
+const fromWhatsAppNumber = process.env.TWILIO_WHATSAPP_NUMBER!; 
 
-// Initialize client only if all credentials are available
-let client: ReturnType<typeof twilio> | null = null;
-
-if (accountSid && authToken) {
-  client = twilio(accountSid, authToken);
-  console.log("Twilio client initialized successfully");
-} else {
-  console.warn("Twilio credentials missing - WhatsApp notifications will not work");
-  console.warn("Missing:", {
-    accountSid: !accountSid,
-    authToken: !authToken,
-    fromWhatsAppNumber: !fromWhatsAppNumber
-  });
+if (!accountSid || !authToken || !fromWhatsAppNumber) {
+  throw new Error("Missing Twilio environment variables. Check .env.local");
 }
+
+const client = twilio(accountSid, authToken);
 
 /**
  * sendWhatsApp - sends a WhatsApp message using Twilio
@@ -26,12 +17,8 @@ if (accountSid && authToken) {
  */
 export async function sendWhatsApp(to: string, body: string) {
   if (!to) throw new Error("Missing 'to' phone number");
-  
-  if (!client || !fromWhatsAppNumber) {
-    throw new Error("Twilio not configured. Missing environment variables: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or TWILIO_WHATSAPP_NUMBER");
-  }
-  
   try {
+    
     const toWhatsApp = `whatsapp:${to}`;
     const res = await client.messages.create({
       from: fromWhatsAppNumber,
@@ -44,7 +31,7 @@ export async function sendWhatsApp(to: string, body: string) {
     console.error("Twilio sendWhatsApp error:", error);
     throw error;
   }
-}
 
-console.log("Twilio module loaded. Account SID:", accountSid?.slice(0, 10));
+}
+console.log("loaded twilio sid: ",process.env.TWILIO_ACCOUNT_SID?.slice(0, 10));
 
