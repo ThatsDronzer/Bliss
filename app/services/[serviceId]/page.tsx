@@ -366,6 +366,28 @@ export default function ServiceDetailPage() {
       });
       setIsDialogOpen(false);
       
+      try {
+      const notifyResponse = await fetch('/api/notify/vendor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerClerkId: currentUser.id,
+          vendorId: service.vendor._id,
+          service: service.name ?? '',
+        }),
+      });
+
+      const notifyData = await notifyResponse.json();
+
+      if (notifyResponse.ok) {
+        toast.success("Vendor notified successfully via WhatsApp!");
+      } else {
+        toast.warning("Service booked, but vendor notification failed.");
+      }
+    } catch (notifyErr) {
+      toast.warning("Service booked, but vendor notification failed.");
+    }
+
       // Reset form
       setBookingForm({
         address: {
