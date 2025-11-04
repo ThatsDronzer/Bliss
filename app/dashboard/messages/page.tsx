@@ -81,8 +81,10 @@ export default function CustomerMessagesPage() {
   useEffect(() => {
     const fetchBookingRequests = async () => {
       try {
-        const response = await fetch(`/api/user/booking-requests?page=${currentPage}&limit=9`)
-        const data = await response.json()
+        const data = await bookingApi.getUserBookingRequests({
+          page: currentPage,
+          limit: 9,
+        })
         
         // Ensure we always set an array, even if empty
         setBookingRequests(Array.isArray(data.messages) ? data.messages : [])

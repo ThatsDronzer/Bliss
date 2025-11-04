@@ -91,35 +91,14 @@ export default function ReviewForm({
       
       console.log('Submitting review with data:', requestBody);
       
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
-
-      const response = await fetch('/api/review', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data = await response.json();
+      const { reviewApi } = await import('@/lib/api/services');
+      await reviewApi.createReview(requestBody);
       
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit review');
-      }
-
-      if (response.ok) {
-        setComment('');
-        setRating(5);
-        // Trigger a fetch to update reviews
-        const event = new CustomEvent('reviewSubmitted');
-        window.dispatchEvent(event);
-      } else {
-        const error = await response.json();
-        alert(error.error || 'Failed to submit review');
-      }
+      setComment('');
+      setRating(5);
+      // Trigger a fetch to update reviews
+      const event = new CustomEvent('reviewSubmitted');
+      window.dispatchEvent(event);
     } catch (error) {
       console.error('Error submitting review:', error);
       alert('Failed to submit review');

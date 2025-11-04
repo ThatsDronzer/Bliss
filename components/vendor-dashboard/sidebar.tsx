@@ -96,9 +96,8 @@ export function VendorDashboardSidebar() {
   useEffect(() => {
     const fetchMessageCount = async () => {
       try {
-        const response = await fetch('/api/vendor/booking-requests?page=1&limit=1000') // Get all to count
-        const data = await response.json()
-        if (response.ok && Array.isArray(data.messages)) {
+        const data = await bookingApi.getVendorBookingRequests({ page: 1, limit: 1000 });
+        if (Array.isArray(data.messages)) {
           // Count only pending messages for the badge
           const pendingCount = data.messages.filter((msg: any) => 
             msg.bookingDetails?.status === 'pending'

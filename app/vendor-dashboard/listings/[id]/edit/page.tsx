@@ -14,6 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 import { deleteUploadedImage } from "@/lib/client-side-upload"
 import { Badge } from "@/components/ui/badge"
+import { listingApi } from "@/lib/api/services"
 
 interface ListingImage {
   url: string;
@@ -108,8 +109,7 @@ export default function EditListingPage() {
   useEffect(() => {
     async function fetchListing() {
       try {
-        const res = await fetch(`/api/listing/${params.id}`);
-        const data = await res.json();
+        const data = await listingApi.getListingById(params.id as string);
         const listing = data.listing;
 
         setFormData({
@@ -433,33 +433,8 @@ const handleSubmit = async (e: React.FormEvent) => {
       tempItemImageIds: uploadedItemImages.map(img => img.public_id)
     };
 
-    const res = await fetch("/api/listing", {
-      method: "PUT",
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    const responseData = await res.json();
-
-    if (!res.ok) {
-      // Cleanup uploaded images if API fails
-      if (uploadedImages.length > 0) {
-        await Promise.all(
-          uploadedImages.map(img => deleteUploadedImage(img.public_id))
-        );
-      }
-      if (uploadedItemImages.length > 0) {
-        await Promise.all(
-          uploadedItemImages.map(img => deleteUploadedImage(img.public_id))
-        );
-      }
-      throw new Error(responseData.message || "Failed to update listing");
-    }
-
-    toast.success("Listing updated successfully");
+      const responseData = await listingApi.updateListing(requestBody);
+      toast.success("Listing updated successfully");
 
     router.push("/vendor-dashboard/listings");
   } catch (err: any) {

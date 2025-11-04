@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { paymentApi } from '@/lib/api/services';
 
 declare global {
   interface Window {
@@ -40,15 +41,7 @@ export const useRazorpay = (): UseRazorpayReturn => {
       }
 
       // Create payment order
-      const orderResponse = await fetch('/api/payments/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ messageId }),
-      });
-
-      const orderData = await orderResponse.json();
+      const orderData = await paymentApi.createPayment(messageId);
 
       if (!orderData.success) {
         throw new Error(orderData.error || 'Failed to create payment order');
@@ -65,19 +58,11 @@ export const useRazorpay = (): UseRazorpayReturn => {
         handler: async function (response: any) {
           try {
             // Verify payment on backend
-            const verificationResponse = await fetch('/api/payments/verify', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }),
+            const verificationData = await paymentApi.verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
             });
-
-            const verificationData = await verificationResponse.json();
 
             if (verificationData.success) {
               // Payment successful - show breakdown

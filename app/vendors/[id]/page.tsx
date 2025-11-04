@@ -19,6 +19,7 @@ import { Phone, Mail, MapIcon, Star, Heart } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google"
 import Image from "next/image"
+import { vendorApi } from "@/lib/api/services"
 const inter = Inter({ subsets: ["latin"] })
 
 export default function VendorDetailsPage() {
@@ -36,13 +37,7 @@ export default function VendorDetailsPage() {
     const fetchVendorDetails = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/vendors/${params.id}`);
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch vendor details');
-        }
-        
+        const data = await vendorApi.getVendorById(params.id as string);
         setVendor(data);
       } catch (err) {
         let errorMessage = 'An error occurred while fetching vendor details';

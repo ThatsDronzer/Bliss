@@ -20,8 +20,7 @@ export default function VendorSearch() {
       if (debouncedService) queryParams.append('service', debouncedService);
       if (debouncedLocation) queryParams.append('location', debouncedLocation);
 
-      const response = await fetch(`/api/search-vendors?${queryParams}`);
-      const data = await response.json();
+      const data = await searchApi.searchVendors(debouncedService, debouncedLocation);
       setVendors(data.vendors);
     } catch (error) {
       console.error('Search failed:', error);

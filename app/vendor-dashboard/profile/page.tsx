@@ -14,6 +14,7 @@ import { CoinDisplay } from "@/components/ui/coin-display"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
+import { vendorApi } from "@/lib/api/services"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,12 +97,7 @@ export default function VendorProfilePage() {
     const fetchVendorData = async () => {
       setIsLoading(true)
       try {
-        const response = await fetch(`/api/vendor/${user?.id}?t=${Date.now()}`, {
-          cache: 'no-store'
-        })
-        if (!response.ok) throw new Error('Failed to fetch vendor data')
-        
-        const data = await response.json()
+        const data = await vendorApi.getVendorByClerkId(user!.id)
         
         setFormData(prev => ({
           ...prev,
@@ -141,11 +137,8 @@ export default function VendorProfilePage() {
       if (isLoaded && isSignedIn && userRole === "vendor" && user?.id) {
         const fetchVendorData = async () => {
           try {
-            const response = await fetch(`/api/vendor/${user.id}?t=${Date.now()}`, {
-              cache: 'no-store'
-            })
-            if (response.ok) {
-              const data = await response.json()
+            const data = await vendorApi.getVendorByClerkId(user.id)
+            if (data) {
               setFormData(prev => ({
                 ...prev,
                 serviceName: data.service_name || data.businessName || prev.serviceName,
@@ -210,16 +203,7 @@ export default function VendorProfilePage() {
       }
 
       // Update vendor data in MongoDB
-      const response = await fetch(`/api/vendor/${user.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update vendor profile')
-      }
+      await vendorApi.updateVendorByClerkId(user.id, payload)
 
       // Update Clerk user metadata
       try {

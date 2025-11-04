@@ -32,6 +32,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useSession } from "@clerk/clerk-react";
 import { AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog";
+import { listingApi, vendorApi } from "@/lib/api/services";
+import { useApiClient } from "@/lib/api/client-with-auth";
 
 export default function VendorListingsPage() {
   const { session } = useSession();
@@ -91,11 +93,8 @@ export default function VendorListingsPage() {
     const checkVerificationStatus = async () => {
       if (user?.id) {
         try {
-          const response = await fetch(`/api/vendor-verification?clerkId=${user.id}`);
-          const data = await response.json();
-          if (response.ok) {
-            setIsVerified(data.isVerified);
-          }
+          const data = await vendorApi.getVendorVerification(user.id);
+          setIsVerified(data.isVerified);
         } catch (error) {
           console.error('Error checking verification status:', error);
         } finally {
@@ -129,15 +128,7 @@ export default function VendorListingsPage() {
       setToken(userToken);
 
       try {
-        const res = await fetch("/api/listing", {
-          headers: {
-            Authorization: `Bearer ${userToken}`,
-            "Content-Type": "application/json",
-          },
-        });
-
-        const data = await res.json();
-
+        const data = await listingApi.getListings();
         let listingsArray: Listing[] = data.listings;
 
 
@@ -238,20 +229,7 @@ export default function VendorListingsPage() {
   toast.promise(
     (async () => {
       try {
-        const res = await fetch("/api/listing", {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ listingId }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.message || "Failed to delete listing");
-        }
+        await listingApi.deleteListing(listingId);
 
         // Update UI
         setListingsData((prev) => ({
@@ -401,9 +379,25 @@ export default function VendorListingsPage() {
                   <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={() => {
+                      onClick={async () => {
                         setOpenDeactivate(false);
-                        toast.success("Deactivate functionality not implemented yet.");
+                        try {
+                          await listingApi.toggleListingStatus(listing._id);
+                          toast.success("Listing status updated");
+                          // Refresh listings
+                          const data = await listingApi.getListings();
+                          const listingsArray = (data.listings || []).map((l: any) => ({
+                            ...l,
+                            status: l.isActive ? "active" : "inactive",
+                          }));
+                          setListingsData({
+                            active: listingsArray.filter((l: any) => l.status === "active"),
+                            draft: [],
+                            inactive: listingsArray.filter((l: any) => l.status === "inactive"),
+                          });
+                        } catch (error) {
+                          toast.error("Failed to update listing status");
+                        }
                       }}
                     >
                       Deactivate

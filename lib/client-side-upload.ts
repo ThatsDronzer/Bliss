@@ -1,3 +1,4 @@
+import { imageApi } from './api/services';
 
 export const uploadImagesOnSubmit = async (files: File[]): Promise<any[]> => {
   const uploadPromises = files.map(async (file) => {
@@ -27,13 +28,7 @@ export const uploadImagesOnSubmit = async (files: File[]): Promise<any[]> => {
 
 export const deleteUploadedImage = async (publicId: string): Promise<void> => {
   try {
-    await fetch('/api/delete-image', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ publicId }),
-    });
+    await imageApi.deleteImage(publicId);
   } catch (error) {
     console.error('Failed to delete image:', error);
   }

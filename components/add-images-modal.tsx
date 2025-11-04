@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { listingApi } from "@/lib/api/services";
 
 interface AddImagesModalProps {
   listingId: string;
@@ -65,23 +66,10 @@ export default function AddImagesModal({ listingId, token, onImagesAdded }: AddI
       formData.append('listingId', listingId);
       
       selectedImages.forEach((image) => {
-        formData.append('newImages', image);
+        formData.append('images', image);
       });
 
-      const response = await fetch('/api/listing/add-images', {
-        method: 'PATCH',
-        body: formData,
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to upload images');
-      }
-
-      const data = await response.json();
+      const data = await listingApi.addImages(listingId, selectedImages);
       
       toast({
         title: "Success!",

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card } from "@/components/ui/card"
+import { bookingApi, notificationApi } from "@/lib/api/services"
 
 interface BookingRequest {
   id: string
@@ -67,8 +68,10 @@ export default function VendorMessagesPage() {
   useEffect(() => {
     const fetchBookingRequests = async () => {
       try {
-        const response = await fetch(`/api/vendor/booking-requests?page=${currentPage}&limit=9`)
-        const data = await response.json()
+        const data = await bookingApi.getVendorBookingRequests({
+          page: currentPage,
+          limit: 9,
+        })
         
         setBookingRequests(Array.isArray(data.messages) ? data.messages : [])
         setTotalPages(data.pagination?.pages || 1)
@@ -87,16 +90,7 @@ export default function VendorMessagesPage() {
 
   const handleStatusUpdate = async (requestId: string, status: 'accepted' | 'not-accepted') => {
     try {
-      const response = await fetch(`/api/vendor/booking-requests/${requestId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status }),
-      })
-
-      if (response.ok) {
-        const updatedRequest = await response.json()
+      const updatedRequest = await bookingApi.updateVendorBookingRequestStatus(requestId, status)
         
         // If backend returns updated data, use it; otherwise refetch all data
         if (updatedRequest.data) {
@@ -111,8 +105,10 @@ export default function VendorMessagesPage() {
           }
         } else {
           // Refetch all data to get the latest information including address
-          const refetchResponse = await fetch(`/api/vendor/booking-requests?page=${currentPage}&limit=9`)
-          const refetchData = await refetchResponse.json()
+          const refetchData = await bookingApi.getVendorBookingRequests({
+            page: currentPage,
+            limit: 9,
+          })
           
           const updatedRequests = Array.isArray(refetchData.messages) ? refetchData.messages : []
           setBookingRequests(updatedRequests)
@@ -125,11 +121,23 @@ export default function VendorMessagesPage() {
             }
           }
         }
+        
+        // Send notification to customer
+        try {
+          await notificationApi.notifyCustomer({
+            requestId,
+            customerPhone: selectedRequest?.user.phone || '',
+            vendorName: user?.fullName || 'Vendor',
+            status: status === 'accepted' ? 'accepted' : 'rejected',
+            customerName: selectedRequest?.user.name || '',
+          })
+        } catch (notifError) {
+          console.error('Failed to send notification:', notifError)
+        }
+      } catch (error) {
+        console.error('Error updating booking status:', error)
       }
-    } catch (error) {
-      console.error('Error updating booking status:', error)
     }
-  }
 
   if (!isLoaded || !isSignedIn || userRole !== "vendor") {
     return null

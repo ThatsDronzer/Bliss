@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { userApi } from "@/lib/api/services"
 
 export default function ProfilePage() {
   const router = useRouter()
@@ -66,9 +67,7 @@ export default function ProfilePage() {
     const fetchUserData = async () => {
       setIsLoading(true)
       try {
-        const response = await fetch(`/api/user/${user.id}`)
-        if (!response.ok) throw new Error('Failed to fetch user data')
-        const data = await response.json()
+        const data = await userApi.getUserByClerkId(user.id)
 
         setFormData({
           name: data.name || user.fullName || "",
@@ -134,18 +133,7 @@ export default function ProfilePage() {
         }
       };
 
-      const response = await fetch(`/api/user/${user.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update profile');
-      }
-
-      const updatedData = await response.json();
+      const updatedData = await userApi.updateUserByClerkId(user.id, payload);
       
       // Update the form state with the complete response
       setFormData(prev => ({

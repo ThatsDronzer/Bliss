@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 import { useSession } from '@clerk/clerk-react';
 import { Badge } from "@/components/ui/badge"
+import { listingApi, imageApi } from "@/lib/api/services"
 
 interface Item {
   id: string;
@@ -276,20 +277,20 @@ export default function NewListingPage() {
   };
 
   const deleteUploadedImages = async (images: any[]) => {
-  for (const image of images) {
-    try {
-      await fetch('/api/delete-image', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ publicId: image.public_id }),
-      });
-    } catch (error) {
-      console.error('Failed to delete image:', error);
+    const publicIds = images
+      .map((img) => img.public_id)
+      .filter((id) => id && typeof id === 'string' && id.trim().length > 0);
+    
+    if (publicIds.length === 0) {
+      return;
     }
-  }
-};
+
+    try {
+      await imageApi.deleteImages(publicIds);
+    } catch (error) {
+      console.error('Failed to delete images:', error);
+    }
+  };
 
   const handleAddItem = () => {
     if (newItem.name.trim() && newItem.price.trim() && newItem.image) {
@@ -379,13 +380,8 @@ export default function NewListingPage() {
     const itemImageIds = uploadedItemImages.map(img => img.public_id);
 
     // Send to your API
-    const response = await fetch('/api/listing', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
+    try {
+      await listingApi.createListing({
         title: formData.title,
         description: formData.description,
         price: parseFloat(formData.price.replace(/[^0-9.-]+/g, "")) || 0,
@@ -396,17 +392,14 @@ export default function NewListingPage() {
         images: uploadedImages,
         tempImageIds: mainImageIds, // For cleanup
         tempItemImageIds: itemImageIds, // For cleanup
-      }),
-    });
+      });
 
-    if (!response.ok) {
+      toast.success("Listing created successfully");
+    } catch (error: any) {
       // Clean up all uploaded images on error
       await deleteUploadedImages([...uploadedImages, ...uploadedItemImages]);
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to create listing');
+      throw new Error(error.message || 'Failed to create listing');
     }
-
-    toast.success("Listing created successfully");
     router.push("/vendor-dashboard/listings");
 
   } catch (err) {

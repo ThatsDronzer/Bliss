@@ -316,8 +316,8 @@ export default function ExploreServicesPage() {
     const fetchServices = async () => {
       setIsLoading(true)
       try {
-        const response = await fetch('/api/vendor-services');
-        const data = await response.json();
+        const { vendorApi } = await import('@/lib/api/services');
+        const data = await vendorApi.getVendorServicesForExplore();
         
         if (data && data.services && data.services.length > 0) {
           setServices(data.services);

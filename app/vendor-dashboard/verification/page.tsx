@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
+import { vendorApi } from "@/lib/api/services"
 
 export default function VendorVerificationPage() {
   const router = useRouter()
@@ -264,15 +265,7 @@ const handleSubmitVerification = async () => {
       clerkId: user?.id
     }
 
-    const response = await fetch("/api/vendor-verification", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(submissionData),
-    })
-
-    const result = await response.json()
+    const result = await vendorApi.submitVendorVerification(submissionData)
 
     if (result.success) {
       toast.success("Your verification has been completed successfully. You can now create listings!")
