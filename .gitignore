@@ -35,3 +35,6 @@ pnpm-lock.yaml
 package.json
 
 .DS_Store.vscode/
+
+
+.next/

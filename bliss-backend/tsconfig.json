@@ -16,9 +16,31 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": "./src",
+    "paths": {
+      "@constants/*": ["constants/*"],
+      "@controllers/*": ["controllers/*"],
+      "@exceptions/*": ["exceptions/*"],
+      "@models/*": ["models/*"],
+      "@repository/*": ["repository/*"],
+      "@routes/*": ["routes/*"],
+      "@utils/*": ["utils/*"],
+      "@services/*": ["services/*"],
+      "@middlewares/*": ["middlewares/*"],
+      "@infrastructure/*": ["infrastructure/*"]
+    }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    // Exclude legacy monolithic files kept for reference
+    "src/controllers/*.ts",
+    "src/services/*.ts",
+    "src/routes/*.routes.ts"
+    ,"src/infrastructure/di/**",
+    "src/middleware/**"
+  ]
 }
 

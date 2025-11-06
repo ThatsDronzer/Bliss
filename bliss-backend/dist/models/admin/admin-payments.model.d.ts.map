@@ -1,0 +1,1 @@
+{"version":3,"file":"admin-payments.model.d.ts","sourceRoot":"","sources":["../../../src/models/admin/admin-payments.model.ts"],"names":[],"mappings":"AACA,MAAM,WAAW,aAAa;IAC7B,GAAG,CAAC,EAAE,MAAM,CAAC;IACb,SAAS,EAAE,MAAM,CAAC;IAClB,SAAS,CAAC,EAAE,IAAI,CAAC;IACjB,SAAS,CAAC,EAAE,IAAI,CAAC;CACjB;AAED,MAAM,WAAW,wBAAwB;IACxC,SAAS,EAAE,MAAM,CAAC;CAClB"}

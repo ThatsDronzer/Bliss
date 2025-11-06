@@ -49,11 +49,11 @@ export const createRazorpayOrder = async (
 
     return {
       id: order.id,
-      amount: order.amount,
-      currency: order.currency,
-      receipt: order.receipt,
-      status: order.status,
-      created_at: order.created_at,
+      amount: Number(order.amount),
+      currency: String(order.currency),
+      receipt: String(order.receipt),
+      status: String(order.status),
+      created_at: Number(order.created_at),
     };
   } catch (error) {
     console.error('Error creating Razorpay order:', error);

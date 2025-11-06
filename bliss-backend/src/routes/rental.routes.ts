@@ -1,7 +1,6 @@
-import express from 'express';
-import { Request, Response } from 'express';
+import express, { Router, Request, Response } from 'express';
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // GET /api/rental - Get rental items (mock data for now)
 router.get('/', (req: Request, res: Response) => {

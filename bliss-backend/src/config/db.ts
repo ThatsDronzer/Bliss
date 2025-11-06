@@ -1,4 +1,4 @@
-import dbConnect from '../utils/dbConnect.js';
+import dbConnect from '../infrastructure/db/mongodb.js';
 
 /**
  * Database configuration and initialization
