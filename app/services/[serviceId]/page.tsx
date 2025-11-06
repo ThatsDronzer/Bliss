@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { ReviewCard } from '@/components/vendor/Review-Card2';
 import { useRazorpay } from '@/hooks/useRazorpay';
-import { bookingApi, reviewApi } from '@/lib/api/services';
+import { bookingApi, reviewApi, searchApi } from '@/lib/api/services';
 
 interface Review {
   _id: string;

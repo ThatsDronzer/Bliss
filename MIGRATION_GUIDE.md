@@ -486,7 +486,7 @@ import { errorHandler } from './middleware/error.middleware';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8787;
 
 // Middleware
 app.use(cors({

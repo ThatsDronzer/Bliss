@@ -1,4 +1,8 @@
+import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+
+// Load environment variables before checking for MONGODB_URI
+dotenv.config();
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Please define the MONGODB_URI environment variable inside .env');

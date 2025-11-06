@@ -26,7 +26,7 @@ import webhookRoutes from './routes/webhook.routes.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8787;
 
 // CORS Configuration
 const corsOptions = {

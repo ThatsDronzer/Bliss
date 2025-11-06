@@ -1,30 +1,24 @@
 "use client"
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
-import { useUser } from "@clerk/nextjs"
+import { useClerk, useUser } from "@clerk/nextjs"
 import {
-  LayoutDashboard,
-  Calendar,
-  BookMarked,
-  Store,
-  MessageSquare,
-  Star,
-  BarChart,
-  User,
-  Settings,
-  PlusCircle,
-  LogOut,
-  CheckCircle,
-  Menu,
-  X,
+    BookMarked,
+    CheckCircle,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    MessageSquare,
+    PlusCircle,
+    Star,
+    Store,
+    User,
+    X
 } from "lucide-react"
-
-import { cn } from "@/lib/utils"
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { useClerk } from "@clerk/nextjs"
-import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 const navItems = [
   {
