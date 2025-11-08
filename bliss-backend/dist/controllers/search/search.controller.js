@@ -1,28 +1,42 @@
-import { SearchService } from '@services/search/search.service';
-import { BadRequestError, NotFoundError } from '@exceptions/core.exceptions';
+import { searchVendorsFromDb, getServiceByIdFromDb, } from '@repository/search/search.repository';
+import { BadRequestError, NotFoundError, DBConnectionError } from '@exceptions/core.exceptions';
 import { sendSuccessResponse } from '@utils/Response.utils';
-const searchService = new SearchService();
+import { SEARCH_ERROR } from '@exceptions/errors';
 export async function searchVendors(req, res, next) {
+    const query = req.query.query;
+    const location = req.query.location;
     try {
-        const query = req.query.query;
-        const location = req.query.location;
-        const result = await searchService.searchVendors(query, location);
+        const result = await searchVendorsFromDb(query, location);
         return sendSuccessResponse(res, result);
     }
     catch (error) {
-        next(error);
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        console.error('Error while searchVendors()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { query, location },
+        });
+        next(new Error(SEARCH_ERROR.message));
     }
 }
 export async function getServiceById(req, res, next) {
+    const { serviceId } = req.params;
     try {
-        const { serviceId } = req.params;
         if (!serviceId) {
             throw new BadRequestError('Service ID is required');
         }
-        const serviceDetails = await searchService.getServiceById(serviceId);
+        const serviceDetails = await getServiceByIdFromDb(serviceId);
         return sendSuccessResponse(res, serviceDetails);
     }
     catch (error) {
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof BadRequestError || error instanceof NotFoundError) {
+            return next(error);
+        }
         if (error instanceof Error) {
             if (error.message === 'Service ID is required') {
                 return next(new BadRequestError('Invalid service ID'));
@@ -34,7 +48,12 @@ export async function getServiceById(req, res, next) {
                 return next(new NotFoundError('Vendor not found'));
             }
         }
-        next(error);
+        console.error('Error while getServiceById()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { serviceId },
+        });
+        next(new Error(SEARCH_ERROR.message));
     }
 }
 //# sourceMappingURL=search.controller.js.map

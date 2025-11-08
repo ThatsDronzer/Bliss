@@ -3,126 +3,125 @@ import { dbConnect } from '@repository/repository';
 import Payment from '../../infrastructure/db/models/payment.model.js';
 import MessageData from '../../infrastructure/db/models/message.model.js';
 import AdminPayment from '../../infrastructure/db/models/admin-payments.model.js';
-import { createRazorpayOrder, verifyPaymentSignature, getPaymentDetails } from '../../utils/razorpay.js';
-import { calculateAmounts } from '../../utils/amountCalculator.js';
-export async function createPaymentOrderInDb(messageId) {
+export async function getMessageByIdFromDb(messageId) {
     try {
         await dbConnect();
-        if (!messageId) {
-            throw new Error('Message ID is required');
-        }
         const message = await MessageData.findById(messageId);
         if (!message) {
-            throw new Error('Message not found');
+            return null;
         }
-        if (message.bookingDetails.status !== 'accepted') {
-            throw new Error('Booking must be accepted by vendor first');
-        }
-        const amounts = calculateAmounts(message.bookingDetails.totalPrice);
-        const razorpayOrder = await createRazorpayOrder({
-            amount: amounts.totalInPaise,
-            currency: 'INR',
-            receipt: `receipt_${messageId}`,
-            notes: {
-                messageId: messageId.toString(),
-                userId: message.user.id,
-                vendorId: message.vendor.id,
-            },
+        return {
+            user: message.user,
+            vendor: message.vendor,
+            listing: message.listing,
+            bookingDetails: message.bookingDetails,
+        };
+    }
+    catch (error) {
+        console.error('Error while getMessageByIdFromDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { messageId },
         });
+        throw new DBConnectionError('Failed to fetch message from database');
+    }
+}
+export async function createPaymentRecordInDb(paymentData) {
+    try {
+        await dbConnect();
         const payment = new Payment({
-            message: messageId,
-            user: {
-                id: message.user.id,
-                name: message.user.name,
-                email: message.user.email,
-                phone: message.user.phone,
-            },
-            vendor: {
-                id: message.vendor.id,
-                name: message.vendor.name,
-                email: message.vendor.email,
-                phone: message.vendor.phone,
-            },
-            listing: {
-                id: message.listing.id,
-                title: message.listing.title,
-                price: message.bookingDetails.totalPrice,
-            },
-            amount: amounts,
+            message: paymentData.messageId,
+            user: paymentData.user,
+            vendor: paymentData.vendor,
+            listing: paymentData.listing,
+            amount: paymentData.amounts,
             razorpay: {
-                orderId: razorpayOrder.id,
+                orderId: paymentData.razorpayOrderId,
             },
         });
         await payment.save();
         return {
-            success: true,
-            order: {
-                id: razorpayOrder.id,
-                amount: razorpayOrder.amount,
-                currency: razorpayOrder.currency,
-            },
             paymentId: payment._id.toString(),
-            amountBreakdown: amounts,
+            payment,
         };
     }
     catch (error) {
-        if (error instanceof DBConnectionError)
-            throw error;
-        throw new DBConnectionError('Failed to create payment order in database');
+        console.error('Error while createPaymentRecordInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { messageId: paymentData.messageId },
+        });
+        throw new DBConnectionError('Failed to create payment record in database');
     }
 }
-export async function verifyPaymentInDb(verificationData) {
+export async function getPaymentByOrderIdFromDb(orderId) {
     try {
         await dbConnect();
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = verificationData;
-        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-            throw new Error('Missing payment details');
-        }
-        const payment = await Payment.findOne({ 'razorpay.orderId': razorpay_order_id });
+        const payment = await Payment.findOne({ 'razorpay.orderId': orderId });
+        return payment;
+    }
+    catch (error) {
+        console.error('Error while getPaymentByOrderIdFromDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { orderId },
+        });
+        throw new DBConnectionError('Failed to fetch payment by order ID from database');
+    }
+}
+export async function updatePaymentStatusToFailedInDb(paymentId, messageId) {
+    try {
+        await dbConnect();
+        await Payment.findByIdAndUpdate(paymentId, {
+            status: 'failed',
+            updatedAt: new Date(),
+        });
+        await MessageData.findByIdAndUpdate(messageId, {
+            'paymentStatus.status': 'failed',
+            updatedAt: new Date(),
+        });
+    }
+    catch (error) {
+        console.error('Error while updatePaymentStatusToFailedInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { paymentId, messageId },
+        });
+        throw new DBConnectionError('Failed to update payment status to failed in database');
+    }
+}
+export async function capturePaymentInDb(paymentId, messageId, razorpayPaymentId, razorpaySignature) {
+    try {
+        await dbConnect();
+        const payment = await Payment.findById(paymentId);
         if (!payment) {
-            throw new Error('Payment record not found');
+            throw new Error('Payment not found');
         }
-        const isSignatureValid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
-        if (!isSignatureValid) {
-            await Payment.findByIdAndUpdate(payment._id, {
-                status: 'failed',
+        payment.status = 'captured';
+        payment.razorpay.paymentId = razorpayPaymentId;
+        payment.razorpay.signature = razorpaySignature;
+        payment.payout.advancePaid = false;
+        payment.payout.advancePaidAt = undefined;
+        payment.payout.payoutStatus = 'none';
+        payment.updatedAt = new Date();
+        await payment.save();
+        await MessageData.findByIdAndUpdate(messageId, {
+            'paymentStatus.status': 'paid',
+            'paymentStatus.paymentId': payment._id,
+            'paymentStatus.paidAt': new Date(),
+            updatedAt: new Date(),
+        });
+        try {
+            const adminPayment = new AdminPayment({
+                paymentId: payment._id,
             });
-            await MessageData.findByIdAndUpdate(payment.message, {
-                'paymentStatus.status': 'failed',
-            });
-            throw new Error('Payment verification failed');
+            await adminPayment.save();
+            console.log('✅ Payment added to admin records:', payment._id);
         }
-        const paymentDetails = await getPaymentDetails(razorpay_payment_id);
-        if (paymentDetails.status !== 'captured') {
-            throw new Error('Payment not captured yet');
-        }
-        if (payment.status !== 'captured') {
-            payment.status = 'captured';
-            payment.razorpay.paymentId = razorpay_payment_id;
-            payment.razorpay.signature = razorpay_signature;
-            payment.payout.advancePaid = false;
-            payment.payout.advancePaidAt = undefined;
-            payment.payout.payoutStatus = 'none';
-            await payment.save();
-            await MessageData.findByIdAndUpdate(payment.message, {
-                'paymentStatus.status': 'paid',
-                'paymentStatus.paymentId': payment._id,
-                'paymentStatus.paidAt': new Date(),
-            });
-            try {
-                const adminPayment = new AdminPayment({
-                    paymentId: payment._id,
-                });
-                await adminPayment.save();
-                console.log('✅ Payment added to admin records:', payment._id);
-            }
-            catch (error) {
-                console.error('❌ Error adding to admin payments:', error);
-            }
+        catch (error) {
+            console.error('❌ Error adding to admin payments:', error);
         }
         return {
-            success: true,
-            message: 'Payment verified successfully',
             paymentId: payment._id.toString(),
             amount: payment.amount.total,
             advancePaid: payment.amount.advanceAmount,
@@ -131,9 +130,15 @@ export async function verifyPaymentInDb(verificationData) {
         };
     }
     catch (error) {
-        if (error instanceof DBConnectionError)
+        console.error('Error while capturePaymentInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { paymentId, messageId },
+        });
+        if (error instanceof Error && error.message === 'Payment not found') {
             throw error;
-        throw new DBConnectionError('Failed to verify payment in database');
+        }
+        throw new DBConnectionError('Failed to capture payment in database');
     }
 }
 export async function getPaymentByIdFromDb(paymentId) {
@@ -143,6 +148,11 @@ export async function getPaymentByIdFromDb(paymentId) {
         return payment;
     }
     catch (error) {
+        console.error('Error while getPaymentByIdFromDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { paymentId },
+        });
         throw new DBConnectionError('Failed to fetch payment from database');
     }
 }

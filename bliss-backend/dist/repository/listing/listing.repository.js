@@ -14,6 +14,14 @@ export async function getVendorListingsFromDb(clerkId) {
         return { listings };
     }
     catch (error) {
+        if (error instanceof Error && error.message === 'Vendor not found') {
+            throw error;
+        }
+        console.error('Error while getVendorListingsFromDb()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { clerkId },
+        });
         throw new DBConnectionError('Failed to fetch vendor listings from database');
     }
 }
@@ -34,6 +42,14 @@ export async function getListingByIdFromDb(listingId, clerkId) {
         return { listing };
     }
     catch (error) {
+        if (error instanceof Error && (error.message === 'Vendor not found' || error.message === 'Listing not found')) {
+            throw error;
+        }
+        console.error('Error while getListingByIdFromDb()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { listingId, clerkId },
+        });
         throw new DBConnectionError('Failed to fetch listing from database');
     }
 }
@@ -96,8 +112,16 @@ export async function createListingInDb(clerkId, listingData) {
         return newListing;
     }
     catch (error) {
-        if (error instanceof DBConnectionError)
+        if (error instanceof Error && (error.message === 'Missing required fields' ||
+            error.message === 'At least one image is required' ||
+            error.message === 'Vendor not found')) {
             throw error;
+        }
+        console.error('Error while createListingInDb()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { clerkId, listingData },
+        });
         throw new DBConnectionError('Failed to create listing in database');
     }
 }
@@ -175,6 +199,7 @@ export async function updateListingInDb(clerkId, updateData) {
             listing.category = category;
         if (features !== undefined)
             listing.features = features;
+        listing.updatedAt = new Date();
         await listing.save();
         if (tempIds.length > 0) {
             const usedImageIds = images ? images.map((img) => img.public_id) : [];
@@ -190,8 +215,16 @@ export async function updateListingInDb(clerkId, updateData) {
         return listing;
     }
     catch (error) {
-        if (error instanceof DBConnectionError)
+        if (error instanceof Error && (error.message === 'Listing ID is required' ||
+            error.message === 'Listing not found' ||
+            error.message === 'Unauthorized: You do not own this listing')) {
             throw error;
+        }
+        console.error('Error while updateListingInDb()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { clerkId, updateData },
+        });
         throw new DBConnectionError('Failed to update listing in database');
     }
 }
@@ -232,6 +265,16 @@ export async function deleteListingFromDb(clerkId, listingId) {
         return listingId;
     }
     catch (error) {
+        if (error instanceof Error && (error.message === 'Listing not found' ||
+            error.message === 'Vendor not found' ||
+            error.message === 'Unauthorized: You do not own this listing')) {
+            throw error;
+        }
+        console.error('Error while deleteListingFromDb()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { clerkId, listingId },
+        });
         throw new DBConnectionError('Failed to delete listing from database');
     }
 }
@@ -253,10 +296,21 @@ export async function toggleListingStatusInDb(clerkId, listingId) {
             throw new Error('Listing not found');
         }
         listing.isActive = !listing.isActive;
+        listing.updatedAt = new Date();
         await listing.save();
         return listing;
     }
     catch (error) {
+        if (error instanceof Error && (error.message === 'Listing ID is required' ||
+            error.message === 'Vendor not found' ||
+            error.message === 'Listing not found')) {
+            throw error;
+        }
+        console.error('Error while toggleListingStatusInDb()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { clerkId, listingId },
+        });
         throw new DBConnectionError('Failed to toggle listing status in database');
     }
 }
@@ -276,11 +330,21 @@ export async function addImagesToListingInDb(clerkId, listingId, images) {
         }
         if (images && Array.isArray(images) && images.length > 0) {
             listing.images = [...listing.images, ...images];
+            listing.updatedAt = new Date();
             await listing.save();
         }
         return listing;
     }
     catch (error) {
+        if (error instanceof Error && (error.message === 'Vendor not found' ||
+            error.message === 'Listing not found')) {
+            throw error;
+        }
+        console.error('Error while addImagesToListingInDb()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { clerkId, listingId, imagesCount: images?.length },
+        });
         throw new DBConnectionError('Failed to add images to listing in database');
     }
 }

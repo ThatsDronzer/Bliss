@@ -33,6 +33,7 @@ export async function handleClerkWebhookInDb(payload, headers) {
                     clerkId: id,
                     name: `${first_name} ${last_name}`,
                     email: email,
+                    updatedAt: new Date(),
                 },
             }, { upsert: true, new: true });
             console.log(`[Webhook] User record created or updated for ${id}.`);
@@ -56,7 +57,7 @@ export async function handleClerkWebhookInDb(payload, headers) {
                 console.log(`[Webhook] ✅ User ${id} successfully migrated to Vendor.`);
             }
             if (role === 'admin') {
-                await User.findOneAndUpdate({ clerkId: id }, { $set: { role: 'admin' } }, { upsert: false });
+                await User.findOneAndUpdate({ clerkId: id }, { $set: { role: 'admin', updatedAt: new Date() } }, { upsert: false });
                 console.log(`[Webhook] ✅ User ${id} role updated to admin.`);
             }
         }
@@ -71,6 +72,15 @@ export async function handleClerkWebhookInDb(payload, headers) {
         return { success: true };
     }
     catch (error) {
+        // Re-throw validation errors for controller to handle
+        if (error instanceof Error && error.message === 'Invalid webhook') {
+            throw error;
+        }
+        console.error('Error while handleClerkWebhookInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { payload, headers },
+        });
         throw new DBConnectionError('Failed to handle Clerk webhook in database');
     }
 }
@@ -108,6 +118,15 @@ export async function handleRazorpayWebhookInDb(body, signature) {
         return { success: true, message: 'Webhook processed' };
     }
     catch (error) {
+        // Re-throw validation errors for controller to handle
+        if (error instanceof Error && error.message === 'Invalid signature') {
+            throw error;
+        }
+        console.error('Error while handleRazorpayWebhookInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { signature },
+        });
         throw new DBConnectionError('Failed to handle Razorpay webhook in database');
     }
 }
@@ -125,7 +144,8 @@ async function handlePaymentCaptured(payment) {
             return;
         }
         paymentByOrder.razorpay.paymentId = paymentId;
-        paymentByOrder.save();
+        paymentByOrder.updatedAt = new Date();
+        await paymentByOrder.save();
         return;
     }
     if (paymentRecord.status === 'captured') {
@@ -136,11 +156,13 @@ async function handlePaymentCaptured(payment) {
     paymentRecord.payout.advancePaid = true;
     paymentRecord.payout.advancePaidAt = new Date();
     paymentRecord.payout.payoutStatus = 'advance_paid';
+    paymentRecord.updatedAt = new Date();
     await paymentRecord.save();
     await MessageData.findByIdAndUpdate(paymentRecord.message, {
         'paymentStatus.status': 'paid',
         'paymentStatus.paymentId': paymentRecord._id,
         'paymentStatus.paidAt': new Date(),
+        updatedAt: new Date(),
     });
     try {
         const adminPayment = new AdminPayment({
@@ -168,9 +190,11 @@ async function handlePaymentFailed(payment) {
     if (paymentId) {
         paymentRecord.razorpay.paymentId = paymentId;
     }
+    paymentRecord.updatedAt = new Date();
     await paymentRecord.save();
     await MessageData.findByIdAndUpdate(paymentRecord.message, {
         'paymentStatus.status': 'failed',
+        updatedAt: new Date(),
     });
     console.log(`Payment failed for order: ${paymentRecord._id}`);
 }
@@ -190,9 +214,11 @@ async function handleRefundCreated(refund) {
     });
     if (paymentRecord) {
         paymentRecord.status = 'refunded';
+        paymentRecord.updatedAt = new Date();
         await paymentRecord.save();
         await MessageData.findByIdAndUpdate(paymentRecord.message, {
             'paymentStatus.status': 'refunded',
+            updatedAt: new Date(),
         });
         console.log(`Refund processed for payment: ${paymentId}`);
     }

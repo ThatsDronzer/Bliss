@@ -1,15 +1,10 @@
 const TYPES = {
-    IUserService: 'IUserService',
-    IVendorService: 'IVendorService',
-    IBookingService: 'IBookingService',
-    IListingService: 'IListingService',
-    IReviewService: 'IReviewService',
-    IPaymentService: 'IPaymentService',
-    IMessageService: 'IMessageService',
-    IAdminService: 'IAdminService',
-    ISearchService: 'ISearchService',
-    INotificationService: 'INotificationService',
-    IWebhookService: 'IWebhookService',
+    // External service integrations only
+    IAwsService: 'IAwsService',
+    IEmailService: 'IEmailService',
+    IInvoiceService: 'IInvoiceService',
+    IStorageService: 'IStorageService',
+    IRazorpayService: 'IRazorpayService',
 };
 export default TYPES;
 //# sourceMappingURL=types.js.map

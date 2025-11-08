@@ -1,1 +1,1 @@
-{"version":3,"file":"booking.router.d.ts","sourceRoot":"","sources":["../../../src/routes/booking/booking.router.ts"],"names":[],"mappings":"AAAA,OAAgB,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAU1C,QAAA,MAAM,MAAM,EAAE,MAAyB,CAAC;AAQxC,eAAe,MAAM,CAAC"}
+{"version":3,"file":"booking.router.d.ts","sourceRoot":"","sources":["../../../src/routes/booking/booking.router.ts"],"names":[],"mappings":"AAAA,OAAgB,EAAE,MAAM,EAAE,MAAM,SAAS,CAAC;AAO1C,QAAA,MAAM,MAAM,EAAE,MAAyB,CAAC;AAKxC,eAAe,MAAM,CAAC"}

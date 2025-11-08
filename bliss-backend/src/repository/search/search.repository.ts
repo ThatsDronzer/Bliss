@@ -52,7 +52,13 @@ export async function searchVendorsFromDb(query?: string, location?: string): Pr
 				features: l.features,
 			})),
 		};
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error while searchVendorsFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { query, location },
+		});
+		
 		throw new DBConnectionError('Failed to search vendors from database');
 	}
 }
@@ -95,7 +101,21 @@ export async function getServiceByIdFromDb(serviceId: string): Promise<any> {
 			category: vendor.service_type || 'General',
 			items: service.items || [],
 		};
-	} catch (error) {
+	} catch (error: any) {
+		// Re-throw validation errors for controller to handle
+		if (error instanceof Error && 
+			(error.message === 'Service ID is required' || 
+			 error.message === 'Service not found' || 
+			 error.message === 'Vendor not found')) {
+			throw error;
+		}
+		
+		console.error('Error while getServiceByIdFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { serviceId },
+		});
+		
 		throw new DBConnectionError('Failed to fetch service from database');
 	}
 }

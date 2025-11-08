@@ -1,14 +1,14 @@
 import type { Request, Response, NextFunction } from 'express';
-import { NotificationService } from '@services/notification/notification.service';
+import { NotificationService } from '../../services/notification.service.js';
 import { BadRequestError } from '@exceptions/core.exceptions';
 import { sendSuccessResponse } from '@utils/Response.utils';
 
 const notificationService = new NotificationService();
 
 export async function notifyCustomer(req: Request, res: Response, next: NextFunction) {
+	const { requestId, customerPhone, vendorName, status, customerName } = req.body;
+	
 	try {
-		const { requestId, customerPhone, vendorName, status, customerName } = req.body;
-
 		if (!requestId || !customerPhone || !vendorName || !status) {
 			throw new BadRequestError('Missing required fields: requestId, customerPhone, vendorName, status');
 		}
@@ -25,22 +25,33 @@ export async function notifyCustomer(req: Request, res: Response, next: NextFunc
 			result,
 		});
 	} catch (error) {
+		if (error instanceof BadRequestError) {
+			return next(error);
+		}
+		
 		if (error instanceof Error) {
 			if (error.message.includes('Missing required fields')) {
 				return next(new BadRequestError(error.message));
 			}
-			if (error.message.includes('Twilio not configured')) {
+			if (error.message.includes('Twilio not configured') || error.message.includes('not configured')) {
 				return next(new BadRequestError(error.message));
 			}
 		}
+		
+		console.error('Error while notifyCustomer()', {
+			error: error instanceof Error ? error.message : 'Unknown error',
+			stack: error instanceof Error ? error.stack : undefined,
+			data: { requestId, customerPhone, vendorName, status },
+		});
+		
 		next(error);
 	}
 }
 
 export async function notifyVendor(req: Request, res: Response, next: NextFunction) {
+	const { customerName, requestId } = req.body;
+	
 	try {
-		const { customerName, requestId } = req.body;
-
 		if (!customerName || !requestId) {
 			throw new BadRequestError('Missing required fields: customerName, requestId');
 		}
@@ -54,6 +65,10 @@ export async function notifyVendor(req: Request, res: Response, next: NextFuncti
 			sid: result.sid,
 		});
 	} catch (error) {
+		if (error instanceof BadRequestError) {
+			return next(error);
+		}
+		
 		if (error instanceof Error) {
 			if (error.message.includes('Missing required fields')) {
 				return next(new BadRequestError(error.message));
@@ -62,6 +77,13 @@ export async function notifyVendor(req: Request, res: Response, next: NextFuncti
 				return next(new BadRequestError(error.message));
 			}
 		}
+		
+		console.error('Error while notifyVendor()', {
+			error: error instanceof Error ? error.message : 'Unknown error',
+			stack: error instanceof Error ? error.stack : undefined,
+			data: { customerName, requestId },
+		});
+		
 		next(error);
 	}
 }

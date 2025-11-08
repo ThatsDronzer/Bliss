@@ -9,7 +9,12 @@ export async function getUserByClerkIdFromDb(clerkId: string): Promise<IUser | n
 		await dbConnect();
 		const user = await User.findOne({ clerkId }).lean();
 		return user as IUser | null;
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error while getUserByClerkIdFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { clerkId },
+		});
 		throw new DBConnectionError('Failed to fetch user from database');
 	}
 }
@@ -29,7 +34,12 @@ export async function createUserInDb(data: ICreateUserInput): Promise<IUser> {
 			address: data.address,
 		});
 		return newUser.toObject() as IUser;
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error while createUserInDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { ...data },
+		});
 		throw new DBConnectionError('Failed to create user in database');
 	}
 }
@@ -69,7 +79,12 @@ export async function createOrUpdateUserInDb(clerkId: string, userData: any, rol
 
 			return { user: newUser.toObject() as IUser, isNew: true };
 		}
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error while createOrUpdateUserInDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { clerkId, role },
+		});
 		throw new DBConnectionError('Failed to create or update user in database');
 	}
 }
@@ -78,7 +93,9 @@ export async function updateUserInDb(clerkId: string, data: IUpdateUserInput): P
 	try {
 		await dbConnect();
 
-		const updateFields: any = {};
+		const updateFields: any = {
+			updatedAt: new Date(),
+		};
 		
 		if (data.name) updateFields.name = data.name;
 		if (data.phone) updateFields.phone = data.phone;
@@ -101,7 +118,12 @@ export async function updateUserInDb(clerkId: string, data: IUpdateUserInput): P
 		).lean();
 
 		return updatedUser as IUser | null;
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error while updateUserInDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { clerkId, ...data },
+		});
 		throw new DBConnectionError('Failed to update user in database');
 	}
 }

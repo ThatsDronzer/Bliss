@@ -9,6 +9,11 @@ export async function getUserByClerkIdFromDb(clerkId) {
         return user;
     }
     catch (error) {
+        console.error('Error while getUserByClerkIdFromDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { clerkId },
+        });
         throw new DBConnectionError('Failed to fetch user from database');
     }
 }
@@ -29,6 +34,11 @@ export async function createUserInDb(data) {
         return newUser.toObject();
     }
     catch (error) {
+        console.error('Error while createUserInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { ...data },
+        });
         throw new DBConnectionError('Failed to create user in database');
     }
 }
@@ -63,13 +73,20 @@ export async function createOrUpdateUserInDb(clerkId, userData, role = 'user') {
         }
     }
     catch (error) {
+        console.error('Error while createOrUpdateUserInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { clerkId, role },
+        });
         throw new DBConnectionError('Failed to create or update user in database');
     }
 }
 export async function updateUserInDb(clerkId, data) {
     try {
         await dbConnect();
-        const updateFields = {};
+        const updateFields = {
+            updatedAt: new Date(),
+        };
         if (data.name)
             updateFields.name = data.name;
         if (data.phone)
@@ -88,10 +105,12 @@ export async function updateUserInDb(clerkId, data) {
         return updatedUser;
     }
     catch (error) {
+        console.error('Error while updateUserInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { clerkId, ...data },
+        });
         throw new DBConnectionError('Failed to update user in database');
     }
 }
 //# sourceMappingURL=user.repository.js.map
-
-// upsert usert in db   
-

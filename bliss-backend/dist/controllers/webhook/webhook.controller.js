@@ -1,7 +1,7 @@
-import { WebhookService } from '@services/webhook/webhook.service';
-import { BadRequestError } from '@exceptions/core.exceptions';
+import { handleClerkWebhookInDb, handleRazorpayWebhookInDb, } from '@repository/webhook/webhook.repository';
+import { BadRequestError, DBConnectionError } from '@exceptions/core.exceptions';
 import { sendSuccessResponse } from '@utils/Response.utils';
-const webhookService = new WebhookService();
+import { WEBHOOK_ERROR } from '@exceptions/errors';
 export async function handleClerkWebhook(req, res, next) {
     try {
         const svixId = req.headers['svix-id'];
@@ -10,7 +10,7 @@ export async function handleClerkWebhook(req, res, next) {
         if (!svixId || !svixTimestamp || !svixSignature) {
             throw new BadRequestError('Missing webhook headers');
         }
-        const result = await webhookService.handleClerkWebhook(req.body, {
+        const result = await handleClerkWebhookInDb(req.body, {
             'svix-id': svixId,
             'svix-timestamp': svixTimestamp,
             'svix-signature': svixSignature,
@@ -18,31 +18,47 @@ export async function handleClerkWebhook(req, res, next) {
         return sendSuccessResponse(res, result);
     }
     catch (error) {
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
         if (error instanceof Error) {
             if (error.message === 'Invalid webhook') {
                 return next(new BadRequestError('Invalid webhook'));
             }
         }
-        next(error);
+        console.error('Error while handleClerkWebhook()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { body: req.body },
+        });
+        next(new Error(WEBHOOK_ERROR.message));
     }
 }
 export async function handleRazorpayWebhook(req, res, next) {
+    const signature = req.headers['x-razorpay-signature'];
     try {
         const rawBody = JSON.stringify(req.body);
-        const signature = req.headers['x-razorpay-signature'];
         if (!signature) {
             throw new BadRequestError('Missing webhook signature');
         }
-        const result = await webhookService.handleRazorpayWebhook(rawBody, signature);
+        const result = await handleRazorpayWebhookInDb(rawBody, signature);
         return sendSuccessResponse(res, result);
     }
     catch (error) {
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
         if (error instanceof Error) {
             if (error.message === 'Invalid signature') {
                 return next(new BadRequestError('Invalid signature'));
             }
         }
-        next(error);
+        console.error('Error while handleRazorpayWebhook()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { signature },
+        });
+        next(new Error(WEBHOOK_ERROR.message));
     }
 }
 export async function testRazorpayWebhook(req, res, next) {

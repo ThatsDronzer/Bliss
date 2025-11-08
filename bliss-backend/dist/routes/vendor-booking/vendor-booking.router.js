@@ -1,5 +1,5 @@
 import express from 'express';
-import { getVendorBookingRequests, updateVendorBookingRequestStatus, } from '@controllers/booking/booking.controller';
+import { getVendorBookingRequests, updateVendorBookingRequestStatus, } from '@controllers/message/message.controller';
 import { authenticate, requireRole } from '../../middlewares/auth.middleware.js';
 const router = express.Router();
 router.get('/', authenticate, requireRole('vendor'), getVendorBookingRequests);

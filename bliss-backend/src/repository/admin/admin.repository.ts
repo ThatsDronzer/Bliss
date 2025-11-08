@@ -45,7 +45,11 @@ export async function getAdminPaymentsFromDb(): Promise<any> {
 			data: formattedPayments,
 			count: formattedPayments.length,
 		};
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error while getAdminPaymentsFromDb()', {
+			error: error.message,
+			stack: error.stack,
+		});
 		throw new DBConnectionError('Failed to fetch admin payments from database');
 	}
 }
@@ -73,6 +77,7 @@ export async function processAdvancePaymentInDb(paymentId: string): Promise<any>
 		(payment as any).payout.advancePaid = true;
 		(payment as any).payout.advancePaidAt = new Date();
 		(payment as any).payout.payoutStatus = 'advance_paid';
+		payment.updatedAt = new Date();
 
 		await payment.save();
 
@@ -83,6 +88,7 @@ export async function processAdvancePaymentInDb(paymentId: string): Promise<any>
 				{
 					'paymentStatus.advancePaid': true,
 					'paymentStatus.advancePaidAt': new Date(),
+					updatedAt: new Date(),
 				}
 			);
 		}
@@ -96,7 +102,19 @@ export async function processAdvancePaymentInDb(paymentId: string): Promise<any>
 				advancePaidAt: (payment as any).payout.advancePaidAt,
 			},
 		};
-	} catch (error) {
+	} catch (error: any) {
+		// Re-throw validation errors for controller to handle
+		if (error.message === 'Payment ID is required' || 
+		    error.message === 'Payment not found' || 
+		    error.message.includes('already processed')) {
+			throw error;
+		}
+		
+		console.error('Error while processAdvancePaymentInDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { paymentId },
+		});
 		throw new DBConnectionError('Failed to process advance payment in database');
 	}
 }
@@ -124,6 +142,7 @@ export async function processFullPaymentInDb(paymentId: string): Promise<any> {
 		(payment as any).payout.fullPaid = true;
 		(payment as any).payout.fullPaidAt = new Date();
 		(payment as any).payout.payoutStatus = 'full_paid';
+		payment.updatedAt = new Date();
 
 		await payment.save();
 
@@ -134,6 +153,7 @@ export async function processFullPaymentInDb(paymentId: string): Promise<any> {
 				{
 					'paymentStatus.fullPaid': true,
 					'paymentStatus.fullPaidAt': new Date(),
+					updatedAt: new Date(),
 				}
 			);
 		}
@@ -147,7 +167,19 @@ export async function processFullPaymentInDb(paymentId: string): Promise<any> {
 				fullPaidAt: (payment as any).payout.fullPaidAt,
 			},
 		};
-	} catch (error) {
+	} catch (error: any) {
+		// Re-throw validation errors for controller to handle
+		if (error.message === 'Payment ID is required' || 
+		    error.message === 'Payment not found' || 
+		    error.message.includes('already processed')) {
+			throw error;
+		}
+		
+		console.error('Error while processFullPaymentInDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { paymentId },
+		});
 		throw new DBConnectionError('Failed to process full payment in database');
 	}
 }

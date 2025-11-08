@@ -10,6 +10,11 @@ export async function getVendorByClerkIdFromDb(clerkId) {
         return vendor;
     }
     catch (error) {
+        console.error('Error while getVendorByClerkIdFromDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { clerkId },
+        });
         throw new DBConnectionError('Failed to fetch vendor from database');
     }
 }
@@ -77,6 +82,15 @@ export async function getVendorByIdFromDb(id) {
         };
     }
     catch (error) {
+        // Re-throw validation errors for controller to handle
+        if (error instanceof Error && error.message === 'Invalid vendor ID') {
+            throw error;
+        }
+        console.error('Error while getVendorByIdFromDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { id },
+        });
         throw new DBConnectionError('Failed to fetch vendor from database');
     }
 }
@@ -100,6 +114,15 @@ export async function getVendorServicesFromDb(id) {
         }));
     }
     catch (error) {
+        // Re-throw validation errors for controller to handle
+        if (error instanceof Error && error.message === 'Invalid vendor ID') {
+            throw error;
+        }
+        console.error('Error while getVendorServicesFromDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { id },
+        });
         throw new DBConnectionError('Failed to fetch vendor services from database');
     }
 }
@@ -185,6 +208,10 @@ export async function getVendorServicesForExploreFromDb() {
         };
     }
     catch (error) {
+        console.error('Error while getVendorServicesForExploreFromDb()', {
+            error: error.message,
+            stack: error.stack,
+        });
         throw new DBConnectionError('Failed to fetch vendor services for explore from database');
     }
 }
@@ -207,6 +234,15 @@ export async function getVendorVerificationFromDb(clerkId) {
         };
     }
     catch (error) {
+        // Re-throw validation errors for controller to handle
+        if (error instanceof Error && error.message === 'clerkId is required') {
+            throw error;
+        }
+        console.error('Error while getVendorVerificationFromDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { clerkId },
+        });
         throw new DBConnectionError('Failed to fetch vendor verification from database');
     }
 }
@@ -310,13 +346,26 @@ export async function submitVendorVerificationInDb(verificationData) {
         };
     }
     catch (error) {
+        // Re-throw validation errors for controller to handle
+        if (error instanceof Error && error.message === 'clerkId is required') {
+            throw error;
+        }
+        console.error('Error while submitVendorVerificationInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { clerkId: verificationData.clerkId },
+        });
         throw new DBConnectionError('Failed to submit vendor verification in database');
     }
 }
 export async function updateVendorByClerkIdInDb(clerkId, updateData) {
     try {
         await dbConnect();
-        const updatedVendor = await Vendor.findOneAndUpdate({ clerkId }, { $set: updateData }, {
+        const updatePayload = {
+            ...updateData,
+            updatedAt: new Date(),
+        };
+        const updatedVendor = await Vendor.findOneAndUpdate({ clerkId }, { $set: updatePayload }, {
             new: true,
             upsert: true,
             runValidators: true,
@@ -324,6 +373,11 @@ export async function updateVendorByClerkIdInDb(clerkId, updateData) {
         return updatedVendor;
     }
     catch (error) {
+        console.error('Error while updateVendorByClerkIdInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { clerkId },
+        });
         throw new DBConnectionError('Failed to update vendor in database');
     }
 }

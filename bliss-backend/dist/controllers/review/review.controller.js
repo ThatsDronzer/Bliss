@@ -1,8 +1,8 @@
-import { ReviewService } from '@services/review/review.service';
-import { BadRequestError, UnauthorizedError, NotFoundError, ForbiddenError } from '@exceptions/core.exceptions';
+import { createReviewInDb, getReviewsByTargetFromDb, deleteReviewFromDb, createListingReviewInDb, deleteListingReviewFromDb, } from '@repository/review/review.repository';
+import { BadRequestError, UnauthorizedError, NotFoundError, ForbiddenError, DBConnectionError } from '@exceptions/core.exceptions';
 import { sendSuccessResponse } from '@utils/Response.utils';
 import { users } from '@clerk/clerk-sdk-node';
-const reviewService = new ReviewService();
+import { REVIEW_ERROR } from '@exceptions/errors';
 export async function createReview(req, res, next) {
     try {
         const userId = req.userId;
@@ -10,7 +10,7 @@ export async function createReview(req, res, next) {
             throw new UnauthorizedError('Unauthorized');
         }
         const { targetId, targetType, rating, comment, name, avatar } = req.body;
-        const review = await reviewService.createReview(userId, {
+        const review = await createReviewInDb(userId, {
             targetId,
             targetType,
             rating,
@@ -23,6 +23,12 @@ export async function createReview(req, res, next) {
         }, 'Review created successfully', 201);
     }
     catch (error) {
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof UnauthorizedError || error instanceof BadRequestError) {
+            return next(error);
+        }
         if (error instanceof Error) {
             if (error.message.includes('Missing required fields')) {
                 const missingFields = error.message.split(': ')[1]?.split(', ') || [];
@@ -35,7 +41,12 @@ export async function createReview(req, res, next) {
                 return next(new BadRequestError('Invalid targetType'));
             }
         }
-        next(error);
+        console.error('Error while createReview()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { targetId: req.body.targetId, targetType: req.body.targetType },
+        });
+        next(new Error(REVIEW_ERROR.message));
     }
 }
 export async function getReviews(req, res, next) {
@@ -45,10 +56,16 @@ export async function getReviews(req, res, next) {
         if (!targetId || !targetType) {
             throw new BadRequestError('Missing targetId or targetType');
         }
-        const reviews = await reviewService.getReviewsByTarget(targetId, targetType);
+        const reviews = await getReviewsByTargetFromDb(targetId, targetType);
         return sendSuccessResponse(res, { reviews });
     }
     catch (error) {
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof BadRequestError) {
+            return next(error);
+        }
         if (error instanceof Error) {
             if (error.message.includes('Missing')) {
                 return next(new BadRequestError(error.message));
@@ -57,7 +74,12 @@ export async function getReviews(req, res, next) {
                 return next(new BadRequestError('Invalid targetType'));
             }
         }
-        next(error);
+        console.error('Error while getReviews()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { targetId: req.query.targetId, targetType: req.query.targetType },
+        });
+        next(new Error(REVIEW_ERROR.message));
     }
 }
 export async function deleteReview(req, res, next) {
@@ -70,10 +92,16 @@ export async function deleteReview(req, res, next) {
         if (!reviewId) {
             throw new BadRequestError('Missing review id');
         }
-        await reviewService.deleteReview(userId, reviewId);
+        await deleteReviewFromDb(userId, reviewId);
         return sendSuccessResponse(res, {}, 'Review deleted successfully');
     }
     catch (error) {
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof UnauthorizedError || error instanceof BadRequestError || error instanceof NotFoundError || error instanceof ForbiddenError) {
+            return next(error);
+        }
         if (error instanceof Error) {
             if (error.message === 'Missing review id') {
                 return next(new BadRequestError('Missing review id'));
@@ -85,7 +113,12 @@ export async function deleteReview(req, res, next) {
                 return next(new ForbiddenError('Forbidden'));
             }
         }
-        next(error);
+        console.error('Error while deleteReview()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { reviewId: req.query.id },
+        });
+        next(new Error(REVIEW_ERROR.message));
     }
 }
 export async function createListingReview(req, res, next) {
@@ -96,12 +129,18 @@ export async function createListingReview(req, res, next) {
         }
         const clerkUser = await users.getUser(clerkUserId);
         const { listingId, comment, rating } = req.body;
-        const review = await reviewService.createListingReview(clerkUserId, { listingId, comment, rating }, clerkUser);
+        const review = await createListingReviewInDb(clerkUserId, { listingId, comment, rating }, clerkUser);
         return sendSuccessResponse(res, {
             review,
         }, 'Review created successfully', 201);
     }
     catch (error) {
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof UnauthorizedError || error instanceof BadRequestError || error instanceof NotFoundError) {
+            return next(error);
+        }
         if (error instanceof Error) {
             if (error.message.includes('User profile incomplete')) {
                 return next(new BadRequestError(error.message));
@@ -113,7 +152,12 @@ export async function createListingReview(req, res, next) {
                 return next(new NotFoundError('Listing not found'));
             }
         }
-        next(error);
+        console.error('Error while createListingReview()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { listingId: req.body.listingId },
+        });
+        next(new Error(REVIEW_ERROR.message));
     }
 }
 export async function deleteListingReview(req, res, next) {
@@ -126,12 +170,18 @@ export async function deleteListingReview(req, res, next) {
         if (!reviewId) {
             throw new BadRequestError('Review ID is required');
         }
-        const deletedReviewId = await reviewService.deleteListingReview(clerkUserId, reviewId);
+        const deletedReviewId = await deleteListingReviewFromDb(clerkUserId, reviewId);
         return sendSuccessResponse(res, {
             deletedReviewId,
         }, 'Review deleted successfully');
     }
     catch (error) {
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof UnauthorizedError || error instanceof BadRequestError || error instanceof NotFoundError || error instanceof ForbiddenError) {
+            return next(error);
+        }
         if (error instanceof Error) {
             if (error.message === 'Review not found') {
                 return next(new NotFoundError('Review not found'));
@@ -143,7 +193,12 @@ export async function deleteListingReview(req, res, next) {
                 return next(new ForbiddenError(error.message));
             }
         }
-        next(error);
+        console.error('Error while deleteListingReview()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { reviewId: req.body.reviewId },
+        });
+        next(new Error(REVIEW_ERROR.message));
     }
 }
 //# sourceMappingURL=review.controller.js.map

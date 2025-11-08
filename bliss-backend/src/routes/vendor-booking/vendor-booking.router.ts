@@ -2,7 +2,7 @@ import express, { Router } from 'express';
 import {
 	getVendorBookingRequests,
 	updateVendorBookingRequestStatus,
-} from '@controllers/booking/booking.controller';
+} from '@controllers/message/message.controller';
 import { authenticate, requireRole } from '../../middlewares/auth.middleware.js';
 
 const router: Router = express.Router();

@@ -1,18 +1,29 @@
-import { VendorService } from '@services/vendor/vendor.service';
-import { BadRequestError, NotFoundError, UnauthorizedError } from '@exceptions/core.exceptions';
+import { getVendorByClerkIdFromDb, getVendorByIdFromDb, getVendorServicesFromDb, getVendorServicesForExploreFromDb, getVendorVerificationFromDb, submitVendorVerificationInDb, updateVendorByClerkIdInDb, } from '@repository/vendor/vendor.repository';
+import { BadRequestError, NotFoundError, UnauthorizedError, DBConnectionError } from '@exceptions/core.exceptions';
 import { sendSuccessResponse } from '@utils/Response.utils';
-const vendorService = new VendorService();
+import { FETCH_VENDOR_ERROR, CREATE_VENDOR_ERROR, UPDATE_VENDOR_ERROR } from '@exceptions/errors';
 export async function getVendorByClerkId(req, res, next) {
     try {
         const { id } = req.params;
         if (!id) {
             throw new BadRequestError('Vendor ID is required');
         }
-        const vendor = await vendorService.getVendorByClerkId(id);
+        const vendor = await getVendorByClerkIdFromDb(id);
         return sendSuccessResponse(res, vendor || {});
     }
     catch (error) {
-        next(error);
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof BadRequestError) {
+            return next(error);
+        }
+        console.error('Error while getVendorByClerkId()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { id: req.params.id },
+        });
+        next(new Error(FETCH_VENDOR_ERROR.message));
     }
 }
 export async function getVendorById(req, res, next) {
@@ -21,14 +32,25 @@ export async function getVendorById(req, res, next) {
         if (!id) {
             throw new BadRequestError('Vendor ID is required');
         }
-        const vendor = await vendorService.getVendorById(id);
+        const vendor = await getVendorByIdFromDb(id);
         if (!vendor) {
             throw new NotFoundError('Vendor not found');
         }
         return sendSuccessResponse(res, vendor);
     }
     catch (error) {
-        next(error);
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof BadRequestError || error instanceof NotFoundError) {
+            return next(error);
+        }
+        console.error('Error while getVendorById()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { id: req.params.id },
+        });
+        next(new Error(FETCH_VENDOR_ERROR.message));
     }
 }
 export async function getVendorServices(req, res, next) {
@@ -37,20 +59,38 @@ export async function getVendorServices(req, res, next) {
         if (!id) {
             throw new BadRequestError('Vendor ID is required');
         }
-        const services = await vendorService.getVendorServices(id);
+        const services = await getVendorServicesFromDb(id);
         return sendSuccessResponse(res, { services });
     }
     catch (error) {
-        next(error);
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof BadRequestError) {
+            return next(error);
+        }
+        console.error('Error while getVendorServices()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { id: req.params.id },
+        });
+        next(new Error(FETCH_VENDOR_ERROR.message));
     }
 }
 export async function getVendorServicesForExplore(req, res, next) {
     try {
-        const result = await vendorService.getVendorServicesForExplore();
+        const result = await getVendorServicesForExploreFromDb();
         return sendSuccessResponse(res, result);
     }
     catch (error) {
-        next(error);
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        console.error('Error while getVendorServicesForExplore()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+        });
+        next(new Error(FETCH_VENDOR_ERROR.message));
     }
 }
 export async function getVendorVerification(req, res, next) {
@@ -59,11 +99,22 @@ export async function getVendorVerification(req, res, next) {
         if (!userId) {
             throw new UnauthorizedError('Unauthorized');
         }
-        const result = await vendorService.getVendorVerification(userId);
+        const result = await getVendorVerificationFromDb(userId);
         return sendSuccessResponse(res, result);
     }
     catch (error) {
-        next(error);
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof UnauthorizedError) {
+            return next(error);
+        }
+        console.error('Error while getVendorVerification()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { userId: req.userId },
+        });
+        next(new Error(FETCH_VENDOR_ERROR.message));
     }
 }
 export async function submitVendorVerification(req, res, next) {
@@ -72,14 +123,25 @@ export async function submitVendorVerification(req, res, next) {
         if (!userId) {
             throw new UnauthorizedError('Unauthorized');
         }
-        const result = await vendorService.submitVendorVerification({
+        const result = await submitVendorVerificationInDb({
             clerkId: userId,
             ...req.body,
         });
         return sendSuccessResponse(res, result, 'Verification submitted successfully');
     }
     catch (error) {
-        next(error);
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof UnauthorizedError) {
+            return next(error);
+        }
+        console.error('Error while submitVendorVerification()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { userId: req.userId, body: req.body },
+        });
+        next(new Error(CREATE_VENDOR_ERROR.message));
     }
 }
 export async function updateVendorByClerkId(req, res, next) {
@@ -88,11 +150,22 @@ export async function updateVendorByClerkId(req, res, next) {
         if (!id) {
             throw new BadRequestError('Vendor ID is required');
         }
-        const updatedVendor = await vendorService.updateVendorByClerkId(id, req.body);
+        const updatedVendor = await updateVendorByClerkIdInDb(id, req.body);
         return sendSuccessResponse(res, updatedVendor);
     }
     catch (error) {
-        next(error);
+        if (error instanceof DBConnectionError) {
+            return next(error);
+        }
+        if (error instanceof BadRequestError) {
+            return next(error);
+        }
+        console.error('Error while updateVendorByClerkId()', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+            data: { id: req.params.id, body: req.body },
+        });
+        next(new Error(UPDATE_VENDOR_ERROR.message));
     }
 }
 //# sourceMappingURL=vendor.controller.js.map

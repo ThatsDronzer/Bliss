@@ -36,7 +36,12 @@ export async function getBookingStatusFromDb(userId: string, serviceId: string):
 					(booking as any).paymentStatus.status === 'pending',
 			},
 		};
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error while getBookingStatusFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { userId, serviceId },
+		});
 		throw new DBConnectionError('Failed to fetch booking status from database');
 	}
 }
@@ -55,6 +60,7 @@ export async function cancelBookingFromDb(userId: string, requestId: string): Pr
 				'bookingDetails.status': 'cancelled',
 				$set: {
 					'paymentStatus.status': 'cancelled',
+					updatedAt: new Date(),
 				},
 			},
 			{ new: true }
@@ -69,7 +75,17 @@ export async function cancelBookingFromDb(userId: string, requestId: string): Pr
 			status: updatedMessage.bookingDetails.status,
 			paymentStatus: updatedMessage.paymentStatus.status,
 		};
-	} catch (error) {
+	} catch (error: any) {
+		// Re-throw validation errors for controller to handle
+		if (error instanceof Error && error.message === 'Booking request not found or cannot be cancelled') {
+			throw error;
+		}
+		
+		console.error('Error while cancelBookingFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { userId, requestId },
+		});
 		throw new DBConnectionError('Failed to cancel booking in database');
 	}
 }
@@ -215,7 +231,25 @@ export async function createBookingMessageInDb(bookingData: any): Promise<any> {
 		]);
 
 		return savedMessage;
-	} catch (error) {
+	} catch (error: any) {
+		// Re-throw validation errors for controller to handle
+		if (error instanceof Error && (
+			error.message === 'Missing required fields' ||
+			error.message === 'Missing required address fields' ||
+			error.message === 'Invalid booking time format' ||
+			error.message === 'Total price must be a positive number' ||
+			error.message === 'Booking user not found' ||
+			error.message === 'Vendor not found' ||
+			error.message === 'Listing not found'
+		)) {
+			throw error;
+		}
+		
+		console.error('Error while createBookingMessageInDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { ...bookingData },
+		});
 		throw new DBConnectionError('Failed to create booking message in database');
 	}
 }
@@ -252,7 +286,12 @@ export async function getVendorBookingRequestsFromDb(userId: string, options: {
 			limit,
 			page,
 		};
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error while getVendorBookingRequestsFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { userId, options },
+		});
 		throw new DBConnectionError('Failed to fetch vendor booking requests from database');
 	}
 }
@@ -277,6 +316,7 @@ export async function updateVendorBookingRequestStatusFromDb(
 			},
 			{
 				'bookingDetails.status': status,
+				updatedAt: new Date(),
 			},
 			{ new: true, lean: true }
 		);
@@ -286,7 +326,20 @@ export async function updateVendorBookingRequestStatusFromDb(
 		}
 
 		return updatedMessage;
-	} catch (error) {
+	} catch (error: any) {
+		// Re-throw validation errors for controller to handle
+		if (error instanceof Error && (
+			error.message === 'Invalid status' ||
+			error.message === 'Booking request not found or cannot be updated'
+		)) {
+			throw error;
+		}
+		
+		console.error('Error while updateVendorBookingRequestStatusFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { userId, requestId, status },
+		});
 		throw new DBConnectionError('Failed to update vendor booking request status in database');
 	}
 }
@@ -323,7 +376,12 @@ export async function getUserBookingRequestsFromDb(userId: string, options: {
 			limit,
 			page,
 		};
-	} catch (error) {
+	} catch (error: any) {
+		console.error('Error while getUserBookingRequestsFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { userId, options },
+		});
 		throw new DBConnectionError('Failed to fetch user booking requests from database');
 	}
 }

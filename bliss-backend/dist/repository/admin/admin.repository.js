@@ -42,6 +42,10 @@ export async function getAdminPaymentsFromDb() {
         };
     }
     catch (error) {
+        console.error('Error while getAdminPaymentsFromDb()', {
+            error: error.message,
+            stack: error.stack,
+        });
         throw new DBConnectionError('Failed to fetch admin payments from database');
     }
 }
@@ -63,12 +67,14 @@ export async function processAdvancePaymentInDb(paymentId) {
         payment.payout.advancePaid = true;
         payment.payout.advancePaidAt = new Date();
         payment.payout.payoutStatus = 'advance_paid';
+        payment.updatedAt = new Date();
         await payment.save();
         const message = payment.message;
         if (message) {
             await Booking.findOneAndUpdate({ payment: paymentId }, {
                 'paymentStatus.advancePaid': true,
                 'paymentStatus.advancePaidAt': new Date(),
+                updatedAt: new Date(),
             });
         }
         return {
@@ -82,6 +88,17 @@ export async function processAdvancePaymentInDb(paymentId) {
         };
     }
     catch (error) {
+        // Re-throw validation errors for controller to handle
+        if (error.message === 'Payment ID is required' ||
+            error.message === 'Payment not found' ||
+            error.message.includes('already processed')) {
+            throw error;
+        }
+        console.error('Error while processAdvancePaymentInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { paymentId },
+        });
         throw new DBConnectionError('Failed to process advance payment in database');
     }
 }
@@ -103,12 +120,14 @@ export async function processFullPaymentInDb(paymentId) {
         payment.payout.fullPaid = true;
         payment.payout.fullPaidAt = new Date();
         payment.payout.payoutStatus = 'full_paid';
+        payment.updatedAt = new Date();
         await payment.save();
         const message = payment.message;
         if (message) {
             await Booking.findOneAndUpdate({ payment: paymentId }, {
                 'paymentStatus.fullPaid': true,
                 'paymentStatus.fullPaidAt': new Date(),
+                updatedAt: new Date(),
             });
         }
         return {
@@ -122,6 +141,17 @@ export async function processFullPaymentInDb(paymentId) {
         };
     }
     catch (error) {
+        // Re-throw validation errors for controller to handle
+        if (error.message === 'Payment ID is required' ||
+            error.message === 'Payment not found' ||
+            error.message.includes('already processed')) {
+            throw error;
+        }
+        console.error('Error while processFullPaymentInDb()', {
+            error: error.message,
+            stack: error.stack,
+            data: { paymentId },
+        });
         throw new DBConnectionError('Failed to process full payment in database');
     }
 }

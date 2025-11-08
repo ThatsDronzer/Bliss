@@ -49,8 +49,24 @@ export async function createReviewInDb(userId: string, reviewData: {
 
 		await review.save();
 		return review.toObject() as IReview;
-	} catch (error) {
+	} catch (error: any) {
 		if (error instanceof DBConnectionError) throw error;
+		
+		// Re-throw validation errors
+		if (error instanceof Error && (
+			error.message.includes('Missing required fields') ||
+			error.message === 'Rating must be between 1 and 5' ||
+			error.message === 'Invalid targetType'
+		)) {
+			throw error;
+		}
+		
+		console.error('Error while createReviewInDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { userId, ...reviewData },
+		});
+		
 		throw new DBConnectionError('Failed to create review in database');
 	}
 }
@@ -73,7 +89,23 @@ export async function getReviewsByTargetFromDb(targetId: string, targetType: 'se
 			.lean();
 
 		return reviews as unknown as IReview[];
-	} catch (error) {
+	} catch (error: any) {
+		if (error instanceof DBConnectionError) throw error;
+		
+		// Re-throw validation errors
+		if (error instanceof Error && (
+			error.message.includes('Missing') ||
+			error.message === 'Invalid targetType'
+		)) {
+			throw error;
+		}
+		
+		console.error('Error while getReviewsByTargetFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { targetId, targetType },
+		});
+		
 		throw new DBConnectionError('Failed to fetch reviews from database');
 	}
 }
@@ -93,7 +125,23 @@ export async function deleteReviewFromDb(userId: string, reviewId: string): Prom
 
 		await Review.deleteOne({ _id: reviewId });
 		return true;
-	} catch (error) {
+	} catch (error: any) {
+		if (error instanceof DBConnectionError) throw error;
+		
+		// Re-throw validation errors
+		if (error instanceof Error && (
+			error.message === 'Review not found' ||
+			error.message.includes('Forbidden')
+		)) {
+			throw error;
+		}
+		
+		console.error('Error while deleteReviewFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { userId, reviewId },
+		});
+		
 		throw new DBConnectionError('Failed to delete review from database');
 	}
 }
@@ -143,7 +191,24 @@ export async function createListingReviewInDb(clerkUserId: string, reviewData: {
 		await listing.save();
 
 		return review.toObject();
-	} catch (error) {
+	} catch (error: any) {
+		if (error instanceof DBConnectionError) throw error;
+		
+		// Re-throw validation errors
+		if (error instanceof Error && (
+			error.message.includes('User profile incomplete') ||
+			error.message.includes('Internal user not found') ||
+			error.message === 'Listing not found'
+		)) {
+			throw error;
+		}
+		
+		console.error('Error while createListingReviewInDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { clerkUserId, ...reviewData },
+		});
+		
 		throw new DBConnectionError('Failed to create listing review in database');
 	}
 }
@@ -171,7 +236,24 @@ export async function deleteListingReviewFromDb(clerkUserId: string, reviewId: s
 		await Listing.updateOne({ _id: review.listing }, { $pull: { reviews: reviewId } });
 
 		return reviewId;
-	} catch (error) {
+	} catch (error: any) {
+		if (error instanceof DBConnectionError) throw error;
+		
+		// Re-throw validation errors
+		if (error instanceof Error && (
+			error.message === 'Review not found' ||
+			error.message.includes('Internal user not found') ||
+			error.message.includes('can only delete your own')
+		)) {
+			throw error;
+		}
+		
+		console.error('Error while deleteListingReviewFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { clerkUserId, reviewId },
+		});
+		
 		throw new DBConnectionError('Failed to delete listing review from database');
 	}
 }
@@ -186,7 +268,15 @@ export async function getListingReviewsFromDb(listingId: string): Promise<any[]>
 			.lean();
 
 		return reviews;
-	} catch (error) {
+	} catch (error: any) {
+		if (error instanceof DBConnectionError) throw error;
+		
+		console.error('Error while getListingReviewsFromDb()', {
+			error: error.message,
+			stack: error.stack,
+			data: { listingId },
+		});
+		
 		throw new DBConnectionError('Failed to fetch listing reviews from database');
 	}
 }
