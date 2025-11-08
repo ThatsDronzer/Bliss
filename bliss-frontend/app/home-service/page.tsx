@@ -48,6 +48,7 @@ import { HomeServiceHero } from "@/components/home-service/HomeServiceHero";
 import { CelebrationPackages } from "@/components/home-service/CelebrationPackages";
 import { FeaturedHomeServices } from "@/components/home-service/FeaturedHomeServices";
 import { HomeServicePackages } from "@/components/home-service/HomeServicePackages";
+import { EventTypesPreview } from "@/components/home-service/EventTypesPreview";
 
 export default function HomeServicePage() {
   const [showBooking, setShowBooking] = useState(false);
@@ -86,111 +87,22 @@ export default function HomeServicePage() {
         onLocationChange={setSelectedLocation}
       />
 
-      {/* Service Categories Section */}
+      {/* Door-to-Door Event Decorations Section */}
       <section className="container mx-auto py-12">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
-          <h2 className="text-3xl font-bold">Door-to-Door Services</h2>
-          
-          {/* Mobile Filter Button */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="md:hidden flex items-center gap-2 mt-4 md:mt-0">
-                <Filter size={16} />
-                Filters
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <SheetHeader>
-                <SheetTitle>Filter Services</SheetTitle>
-                <SheetDescription>
-                  Refine services based on your preferences
-                </SheetDescription>
-              </SheetHeader>
-              <div className="py-4 space-y-6">
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Categories</h3>
-                  <div className="flex flex-wrap gap-2">
-                    <Button 
-                      variant={selectedCategory === 'all' ? "default" : "outline"} 
-                      size="sm"
-                      onClick={() => setSelectedCategory('all')}
-                    >
-                      All
-                    </Button>
-                    {homeServiceCategories.map((cat) => (
-                      <Button 
-                        key={cat.id} 
-                        variant={selectedCategory === cat.id ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setSelectedCategory(cat.id)}
-                      >
-                        {cat.name}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <h3 className="text-sm font-medium">Locations</h3>
-                  <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All locations" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All locations</SelectItem>
-                      <SelectItem value="mumbai">Mumbai</SelectItem>
-                      <SelectItem value="delhi">Delhi</SelectItem>
-                      <SelectItem value="bangalore">Bangalore</SelectItem>
-                      <SelectItem value="hyderabad">Hyderabad</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <SheetClose asChild>
-                  <Button className="w-full">Apply Filters</Button>
-                </SheetClose>
-              </div>
-            </SheetContent>
-          </Sheet>
-          
-          {/* Desktop Filters */}
-          <div className="hidden md:flex items-center space-x-2">
-            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {homeServiceCategories.map((cat) => (
-                  <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Location" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                <SelectItem value="mumbai">Mumbai</SelectItem>
-                <SelectItem value="delhi">Delhi</SelectItem>
-                <SelectItem value="bangalore">Bangalore</SelectItem>
-                <SelectItem value="hyderabad">Hyderabad</SelectItem>
-              </SelectContent>
-            </Select>
+          <div>
+            <h2 className="text-3xl font-bold mb-2">Door-to-Door Event Decorations</h2>
+            <p className="text-gray-600">Choose from our curated collection of event decorations</p>
           </div>
+          <Link href="/home-service/events">
+            <Button className="bg-pink-600 hover:bg-pink-700 mt-4 md:mt-0">
+              View All Events <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
         </div>
         
-        {/* Service Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          <FeaturedHomeServices onSelect={handlePackageSelect} filteredServices={filteredServices} />
-        </div>
-        
-        {/* View More Button */}
-        <div className="mt-8 text-center">
-          <Button variant="outline" className="border-pink-200 text-pink-600 hover:bg-pink-50 px-8 py-2">
-            View All Services <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
+        {/* Event Types Preview */}
+        <EventTypesPreview />
       </section>
 
       {/* Package Section */}
