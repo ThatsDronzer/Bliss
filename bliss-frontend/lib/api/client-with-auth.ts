@@ -11,7 +11,7 @@ export const useApiClient = () => {
     process.env.NEXT_PUBLIC_API_URL ||
     (process.env.NODE_ENV === 'production'
       ? 'https://your-backend-domain.com'
-      : 'http://localhost:5000');
+      : 'http://localhost:8787');
 
   const request = async <T>(
     endpoint: string,

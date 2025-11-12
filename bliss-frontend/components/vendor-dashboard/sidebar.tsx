@@ -1,6 +1,6 @@
 "use client"
 
-import { useClerk, useUser } from "@clerk/nextjs"
+import { useAuth, useClerk, useUser } from "@clerk/nextjs"
 import {
     BookMarked,
     CheckCircle,
@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { useEffect, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -63,6 +63,7 @@ export function VendorDashboardSidebar() {
   const { signOut } = useClerk()
   const router = useRouter()
   const { user } = useUser()
+  const { getToken } = useAuth()
   const [isVerified, setIsVerified] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [messageCount, setMessageCount] = useState(0)
@@ -72,10 +73,33 @@ export function VendorDashboardSidebar() {
     const checkVerificationStatus = async () => {
       if (user?.id) {
         try {
-          const response = await fetch(`/api/vendor-verification?clerkId=${user.id}`)
+          const token = await getToken();
+          console.log('Token retrieved:', token ? 'Yes' : 'No');
+          
+          if (!token) {
+            console.error('No auth token available');
+            return;
+          }
+
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+          const url = `${apiUrl}/api/vendor-verification?clerkId=${user.id}`;
+          console.log('Fetching verification status from:', url);
+
+          const response = await fetch(url, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          })
+          
+          console.log('Verification response status:', response.status);
           const data = await response.json()
+          console.log('Verification response data:', data);
+          
           if (response.ok) {
             setIsVerified(data.isVerified)
+          } else {
+            console.error('Verification check failed:', data);
           }
         } catch (error) {
           console.error('Error checking verification status:', error)
@@ -84,19 +108,49 @@ export function VendorDashboardSidebar() {
     }
 
     checkVerificationStatus()
-  }, [user?.id])
+  }, [user?.id, getToken])
 
   // Fetch message count
   useEffect(() => {
     const fetchMessageCount = async () => {
       try {
-        const data = await bookingApi.getVendorBookingRequests({ page: 1, limit: 1000 });
+        const token = await getToken();
+        console.log('Message count - Token retrieved:', token ? 'Yes' : 'No');
+        
+        if (!token) {
+          console.error('No auth token available for message count');
+          return;
+        }
+
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8787';
+        const url = `${apiUrl}/api/vendor/booking-requests?page=1&limit=1000`;
+        console.log('Fetching messages from:', url);
+
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log('Message response status:', response.status);
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error('Message fetch failed:', errorData);
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data: any = await response.json();
+        console.log('Message data received:', data);
+        
         if (Array.isArray(data.messages)) {
           // Count only pending messages for the badge
           const pendingCount = data.messages.filter((msg: any) => 
             msg.bookingDetails?.status === 'pending'
           ).length
           setMessageCount(pendingCount)
+          console.log('Pending message count:', pendingCount);
         }
       } catch (error) {
         console.error('Error fetching message count:', error)
@@ -109,7 +163,7 @@ export function VendorDashboardSidebar() {
       const interval = setInterval(fetchMessageCount, 30000)
       return () => clearInterval(interval)
     }
-  }, [user?.id])
+  }, [user?.id, getToken])
 
   // Close mobile menu on route change
   useEffect(() => {

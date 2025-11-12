@@ -3,14 +3,14 @@
  * API Client for backend communication
  * 
  * Uses NEXT_PUBLIC_API_URL environment variable for backend URL.
- * Defaults to http://localhost:5000 in development.
+ * Defaults to http://localhost:8787 in development.
  */
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== 'undefined' && (window as any).__API_URL__) ||
   (process.env.NODE_ENV === 'production'
     ? 'https://your-backend-domain.com'
-    : 'http://localhost:5000');
+    : 'http://localhost:8787');
 
 class ApiClient {
   private baseUrl: string;
