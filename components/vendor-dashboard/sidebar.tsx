@@ -19,6 +19,10 @@ import {
   CheckCircle,
   Menu,
   X,
+  Gavel,
+  Trophy,
+  Package,
+  FileCheck,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -51,6 +55,26 @@ const navItems = [
     title: "Reviews",
     href: "/vendor-dashboard/reviews",
     icon: <Star className="w-5 h-5" />,
+  },
+  {
+    title: "Bid Opportunities",
+    href: "/vendor-dashboard/bid-opportunities",
+    icon: <Gavel className="w-5 h-5" />,
+  },
+  {
+    title: "My Bids",
+    href: "/vendor-dashboard/my-bids",
+    icon: <Trophy className="w-5 h-5" />,
+  },
+  {
+    title: "Packages",
+    href: "/vendor-dashboard/packages",
+    icon: <Package className="w-5 h-5" />,
+  },
+  {
+    title: "KYC Verification",
+    href: "/vendor-dashboard/kyc",
+    icon: <FileCheck className="w-5 h-5" />,
   },
   {
     title: "Verification",

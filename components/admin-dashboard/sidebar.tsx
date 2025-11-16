@@ -12,6 +12,8 @@ import {
   MessageSquare,
   Menu,
   X,
+  Gavel,
+  UserCheck,
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -48,6 +50,16 @@ const navItems = [
     title: "Messages",
     href: "/admin-dashboard/messages",
     icon: <MessageSquare className="w-5 h-5" />,
+  },
+  {
+    title: "Bid Orders",
+    href: "/admin-dashboard/bid-orders",
+    icon: <Gavel className="w-5 h-5" />,
+  },
+  {
+    title: "Vendor Approvals",
+    href: "/admin-dashboard/vendor-approvals",
+    icon: <UserCheck className="w-5 h-5" />,
   },
 ]
 
