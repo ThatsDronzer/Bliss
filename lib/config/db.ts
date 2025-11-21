@@ -1,0 +1,57 @@
+// import mongoose from 'mongoose';
+// import dotenv from 'dotenv';
+// dotenv.config();
+// const MONGODB_URI = process.env.MONGODB_URI!;
+
+// const connectDB = async () => {
+//   try {
+//     await mongoose.connect(MONGODB_URI)
+//     console.log('MongoDB connected');
+//   } catch (error) {
+//     console.error('MongoDB connection error:', error);
+//     process.exit(1);
+//   }
+// };
+
+
+
+import mongoose from 'mongoose';
+
+const MONGODB_URI = process.env.MONGODB_URI!;
+
+if (!MONGODB_URI) {
+  throw new Error('Please define the MONGODB_URI environment variable');
+}
+
+let isConnected = false;
+
+const connectDB = async () => {
+  // Check if already connected
+  if (mongoose.connection.readyState === 1) {
+    isConnected = true;
+    return;
+  }
+
+  // If connecting, wait for it
+  if (mongoose.connection.readyState === 2) {
+    while (mongoose.connection.readyState === 2) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    isConnected = mongoose.connection.readyState === 1;
+    return;
+  }
+
+  try {
+    await mongoose.connect(MONGODB_URI, {
+      bufferCommands: false, // Disable mongoose buffering
+    });
+    isConnected = true;
+    console.log('✅ MongoDB connected');
+  } catch (error) {
+    console.error('❌ MongoDB connection error:', error);
+    isConnected = false;
+    throw error;
+  }
+};
+export default connectDB;
+

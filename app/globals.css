@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+@keyframes loading {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 326 78% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 271 91% 65%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 326 78% 95%;
+    --accent-foreground: 326 78% 60%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 326 78% 90%;
+    --input: 0 0% 89.8%;
+    --ring: 326 78% 60%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 326 78% 60%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 271 91% 65%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 326 78% 30%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 326 78% 40%;
+    --input: 0 0% 14.9%;
+    --ring: 326 78% 60%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .dashboard-card {
+    @apply bg-white shadow-md hover:shadow-lg transition-shadow rounded-lg border border-pink-100;
+  }
+
+  .dashboard-card-header {
+    @apply border-b border-pink-100 pb-4 sm:pb-6;
+  }
+
+  .dashboard-card-title {
+    @apply text-lg sm:text-xl font-semibold text-gray-900;
+  }
+
+  .dashboard-card-description {
+    @apply text-xs sm:text-sm text-gray-500;
+  }
+
+  .dashboard-card-content {
+    @apply pt-4 sm:pt-6;
+  }
+
+  .dashboard-stats {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8;
+  }
+
+  .dashboard-stat-card {
+    @apply bg-white shadow-md hover:shadow-lg transition-shadow rounded-lg p-4 sm:p-6 border border-pink-100;
+  }
+
+  .dashboard-icon-container {
+    @apply w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-pink-100 to-purple-100 flex items-center justify-center flex-shrink-0;
+  }
+
+  .dashboard-icon {
+    @apply w-5 h-5 sm:w-6 sm:h-6 text-pink-600;
+  }
+
+  .dashboard-button {
+    @apply bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all text-sm sm:text-base;
+  }
+
+  .dashboard-button-outline {
+    @apply border-pink-200 text-pink-600 hover:bg-pink-50 text-sm sm:text-base;
+  }
+
+  .dashboard-progress {
+    @apply h-2 bg-pink-100;
+  }
+
+  .dashboard-progress-indicator {
+    @apply bg-pink-600;
+  }
+
+  .dashboard-badge {
+    @apply text-pink-600 border-pink-200 bg-pink-50 text-xs;
+  }
+
+  .dashboard-badge-success {
+    @apply text-green-600 border-green-200 bg-green-50 text-xs;
+  }
+
+  .dashboard-badge-warning {
+    @apply text-yellow-600 border-yellow-200 bg-yellow-50 text-xs;
+  }
+}
